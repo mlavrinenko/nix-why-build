@@ -3,10 +3,15 @@ algorithm: blake3
 groups:
   cli-docs:
     source:
-      src/cache.rs: bc1780449a2a824f9cfb9ffddd49760d46ce3380b92b81ec4656764fbe8b0109
+      src/cache.rs: 8f2d20c4b815a3e42d15e536813d588374ba6d4b8279a80f2024dd8c4af91d00
       src/cache_tests.rs: 64faa8ee057963f8bbb2f58b270906954c118ee37b10a864c43ea59c8e2e5757
-      src/lib.rs: 9e01f480872373cb7e96fae01d0859bc5ddb10ea0fec7acca30020b66a631dd2
+      src/drv.rs: 2db47228b533cb699be4854b91a20a90554303ea8d711dd55d7601461c2502dd
+      src/drv_tests.rs: f639fbe24b69d88abe776f05bf224488da523dbea4cd961d426f43fa8539a533
+      src/fixture_tests.rs: f4f934cb24a17a2f21953df1e4173eceeb95b560ac58bcfb3d0ace5df0e25093
+      src/lib.rs: 50974fbe4ea77050fd222c0d5a08cd99da5f78b43335843a2e999531e716ac9a
       src/main.rs: 5013e8c375c79bc55d02e2cc35e14a754e3edf52862c429df27af1951a7fcdbd
+      src/walk.rs: e9136acacb2ff60268ad785390cc707f6b3ee087be54ef2e1704ca42fe8abfed
+      src/walk_tests.rs: 8a6abb7ea069f72d4c8cd23b254eedec6415d0ab1141452fb802fde35484e4fc
     dependents:
       README.md: 5001a683dff7af084860d316dc88514f403b7a2015a6a980a32dcf618ca893da
       www/index.html: 7649a999ae9115cbe6edaca75c110b187d23314df70ef1359c12fe946c276f26
@@ -21,6 +26,6 @@ groups:
       CONTRIBUTING.md: 245c0c17727200d7b489b4b9adb0884299c57518a86439279583d002ab44ba45
   release-notes:
     source:
-      Cargo.toml: 9fd15e1d5c39937feda5c2cc4d5952888e885474ca44340d89e66943e3f9451b
+      Cargo.toml: 961b0dc71ce6744836785076ba1686dbaa21f75feeeeb5e6b4cc1f4ca2c8bf62
     dependents:
-      CHANGELOG.md: ff6f36cad197a99e446b7665337ac8a0e62546968207d4dff8e9d67c662b6bc5
+      CHANGELOG.md: f9538b22cd482d74ac51909abd338a078950d81ae7c8e44645287f3a7e27c326

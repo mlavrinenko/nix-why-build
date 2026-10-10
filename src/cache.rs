@@ -207,6 +207,15 @@ impl Substituters {
     }
 }
 
+impl crate::walk::Query for Substituters {
+    fn query(
+        &self,
+        paths: &[StorePath],
+    ) -> impl std::future::Future<Output = HashMap<StorePath, Availability>> + Send {
+        Substituters::query(self, paths)
+    }
+}
+
 impl Location {
     fn parse(url: &str) -> Self {
         let base = url.split('?').next().unwrap_or(url).trim_end_matches('/');

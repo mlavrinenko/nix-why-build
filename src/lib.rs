@@ -1,6 +1,11 @@
 //! Explain what a Nix build would compile because no binary cache serves it.
 
 pub mod cache;
+pub mod drv;
+pub mod walk;
+
+#[cfg(test)]
+mod fixture_tests;
 
 use thiserror::Error;
 
