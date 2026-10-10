@@ -3,6 +3,7 @@
 
 use crate::reason::Reason;
 use crate::report::{Cascade, Report, Requested, Root, named};
+use crate::style::Styles;
 
 /// How many cascades a root lists before it says how many more there are.
 const SHOWN_CASCADES: usize = 6;
@@ -24,14 +25,30 @@ impl Report {
     /// cascades follow.
     #[must_use]
     pub fn human(&self) -> String {
+        self.render(Styles::plain())
+    }
+
+    /// The same text as [`Report::human`] with ANSI escape codes added: root
+    /// names bold, labels dim, each category in its own color. Take the
+    /// codes away and nothing else differs.
+    #[must_use]
+    pub fn human_styled(&self) -> String {
+        self.render(Styles::terminal())
+    }
+
+    fn render(&self, styles: Styles) -> String {
         let mut out = String::new();
         for group in self.groups() {
-            out.push_str(&group.header());
+            out.push_str(&group.header(styles));
             out.push('\n');
-            out.push_str(&format!("  why {}\n", group.why()));
+            out.push_str(&format!(
+                "  {} {}\n",
+                styles.label("why"),
+                group.why(styles)
+            ));
             let options = group.options();
             let options: Vec<&str> = options.iter().map(String::as_str).collect();
-            if let Some(line) = listed("wanted by", &options, SHOWN_OPTIONS) {
+            if let Some(line) = listed(styles, "wanted by", &options, SHOWN_OPTIONS) {
                 out.push_str(&line);
             }
             let names: Vec<&str> = group
@@ -39,7 +56,7 @@ impl Report {
                 .iter()
                 .map(|cascade| cascade.name.as_str())
                 .collect();
-            if let Some(line) = listed("drags in", &names, SHOWN_CASCADES) {
+            if let Some(line) = listed(styles, "drags in", &names, SHOWN_CASCADES) {
                 out.push_str(&line);
             }
         }
@@ -140,29 +157,35 @@ pub(crate) struct Group<'a> {
 impl Group<'_> {
     /// One root's reason in full; for several, the reason when they share it,
     /// else each category with its count.
-    fn why(&self) -> String {
+    fn why(&self, styles: Styles) -> String {
         let lines: Vec<String> = self
             .roots
             .iter()
             .map(|root| format!("{}: {}", root.reason.category(), root.reason.detail()))
             .collect();
-        if let Some(first) = lines.first()
+        if let (Some(first), Some(root)) = (lines.first(), self.roots.first())
             && lines.iter().all(|line| line == first)
         {
-            return first.clone();
+            let reason = &root.reason;
+            return format!("{}: {}", styles.category(reason), reason.detail());
         }
-        let mut counts: Vec<(&str, usize)> = Vec::new();
+        let mut counts: Vec<(&Reason, usize)> = Vec::new();
         for root in &self.roots {
             let category = root.reason.category();
-            match counts.iter_mut().find(|(seen, _)| *seen == category) {
+            match counts
+                .iter_mut()
+                .find(|(seen, _)| seen.category() == category)
+            {
                 Some((_, count)) => *count += 1,
-                None => counts.push((category, 1)),
+                None => counts.push((&root.reason, 1)),
             }
         }
-        counts.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.cmp(right.0)));
+        counts.sort_by(|(left, left_count), (right, right_count)| {
+            (right_count.cmp(left_count)).then_with(|| left.category().cmp(right.category()))
+        });
         counts
             .iter()
-            .map(|(category, count)| format!("{category} ({count})"))
+            .map(|(reason, count)| format!("{} ({count})", styles.category(reason)))
             .collect::<Vec<_>>()
             .join(", ")
     }
@@ -206,7 +229,7 @@ impl Group<'_> {
     /// `name` (with ` (fetch)`) for one root; `N roots: a, b, c (+M more)`
     /// for several, `fetches` when every one is, `local-only` for the
     /// local-only group.
-    fn header(&self) -> String {
+    fn header(&self, styles: Styles) -> String {
         let [root] = self.roots.as_slice() else {
             let kind = if self.is_local_only() {
                 "local-only"
@@ -217,16 +240,17 @@ impl Group<'_> {
             };
             let names: Vec<&str> = self.roots.iter().map(|root| root.name.as_str()).collect();
             let shown = names.get(..SHOWN_GROUP_ROOTS).unwrap_or(&names);
-            let mut line = format!("{} {kind}: {}", names.len(), shown.join(", "));
+            let painted: Vec<String> = shown.iter().map(|name| styles.root(name)).collect();
+            let mut line = format!("{} {kind}: {}", names.len(), painted.join(", "));
             if names.len() > shown.len() {
                 line.push_str(&format!(" (+{} more)", names.len() - shown.len()));
             }
             return line;
         };
         if root.fixed_output {
-            format!("{} (fetch)", root.name)
+            format!("{} (fetch)", styles.root(&root.name))
         } else {
-            root.name.clone()
+            styles.root(&root.name)
         }
     }
 }
@@ -276,12 +300,12 @@ fn sorted_drvs<'a>(cascades: &[&'a Cascade]) -> Vec<&'a str> {
     drvs
 }
 
-fn listed(label: &str, names: &[&str], cap: usize) -> Option<String> {
+fn listed(styles: Styles, label: &str, names: &[&str], cap: usize) -> Option<String> {
     if names.is_empty() {
         return None;
     }
     let shown = names.get(..cap).unwrap_or(names);
-    let mut line = format!("  {label} {}", shown.join(", "));
+    let mut line = format!("  {} {}", styles.label(label), shown.join(", "));
     if names.len() > shown.len() {
         line.push_str(&format!(" (+{} more)", names.len() - shown.len()));
     }
@@ -296,3 +320,7 @@ fn plural(count: usize, word: &str) -> String {
         format!("{word}s")
     }
 }
+
+#[cfg(test)]
+#[path = "human_tests.rs"]
+mod tests;

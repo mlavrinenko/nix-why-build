@@ -101,6 +101,11 @@ derivations`, `comparing 52 roots with nixpkgs`) and vanishes before the
 report prints. A pipe or a file gets nothing extra. `RUST_LOG=info` logs every
 phase with its time instead.
 
+On a terminal the report is colored: root names bold, labels dim, a color per
+`why` category, with `overridden` and `unknown` loud and `fetch` and
+`local-only` quiet. `NO_COLOR` turns it off, and `--color always` turns it on
+for `| less -R`. A pipe or a file gets plain text.
+
 `--json` prints everything, each cascade with its `chain` down to the root.
 
 ```json
@@ -138,9 +143,11 @@ async fn main() -> Result<(), nix_why_build::Error> {
 
 The whole surface is `explain`, `Options` (add `with_substituters`,
 `with_trusted_keys` and `with_store_dir` to pin the caches or the store),
-`Report` with its `Root`s, and `Reason`. `with_progress` takes a callback
-that hears each `Progress` phase, and the library prints nothing itself.
-Everything else stays private and the types are `#[non_exhaustive]`, so a new field never breaks your build.
+`Report` with its `Root`s, and `Reason`. `report.human()` is the text the CLI
+prints and `report.human_styled()` the same with ANSI colors. `with_progress`
+takes a callback that hears each `Progress` phase, and the library prints
+nothing itself. Everything else stays private and the types are
+`#[non_exhaustive]`, so a new field never breaks your build.
 
 ## Install
 

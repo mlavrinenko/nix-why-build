@@ -2,7 +2,7 @@ use std::io::{ErrorKind, IsTerminal, Write};
 use std::path::PathBuf;
 
 use anyhow::Result;
-use clap::Parser;
+use clap::{ColorChoice, Parser};
 
 mod terminal;
 
@@ -21,6 +21,9 @@ struct Cli {
     /// Print the report as JSON
     #[arg(long)]
     json: bool,
+    /// When to color the report; `auto` colors a terminal unless `NO_COLOR` is set
+    #[arg(long, value_enum, value_name = "WHEN", default_value_t)]
+    color: ColorChoice,
     /// Where `.drv` files live
     #[arg(long, value_name = "DIR", default_value = "/nix/store", hide = true)]
     store_dir: PathBuf,
@@ -55,7 +58,18 @@ async fn main() -> Result<()> {
             serde_json::to_string_pretty(&report)?
         )
     } else {
-        write!(std::io::stdout(), "{}", report.human())
+        let stdout = std::io::stdout();
+        let styled = terminal::wants_color(
+            cli.color,
+            std::env::var_os("NO_COLOR").as_deref(),
+            stdout.is_terminal(),
+        );
+        let text = if styled {
+            report.human_styled()
+        } else {
+            report.human()
+        };
+        write!(stdout.lock(), "{text}")
     };
     match written {
         // `| head` and a pager quit early close stdout; that is no failure.

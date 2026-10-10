@@ -113,3 +113,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   not one extra byte. `RUST_LOG=info` logs each phase with its duration. As a
   library, `Options::with_progress` takes a callback that hears each
   `Progress` phase; the library prints nothing itself.
+- On a terminal the report is colored: root names bold, labels (`why`,
+  `wanted by`, `drags in`) dim, and a color per `why` category, with
+  `overridden` and `unknown` loud and `fetch` and `local-only` quiet. `NO_COLOR`
+  turns it off, `--color auto|always|never` overrides the guess (`| less -R`),
+  and a pipe or a file gets the same plain text as before. `--json` is never
+  colored. As a library, `Report::human_styled` is `human` with ANSI codes.

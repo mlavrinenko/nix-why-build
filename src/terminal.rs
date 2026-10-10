@@ -1,7 +1,10 @@
 //! The progress line on a terminal's stderr: rewritten in place as the work
 //! moves on, erased before anything else prints.
 
+use std::ffi::OsStr;
 use std::io::Write;
+
+use clap::ColorChoice;
 
 /// The longest line drawn. A longer one would wrap, and `\r` only rewinds
 /// the row the cursor is on.
@@ -26,6 +29,21 @@ fn fit(text: &str) -> String {
     cut
 }
 
+/// Whether the report gets colors. `always` and `never` are orders; `auto`
+/// colors a terminal, unless `NO_COLOR` is set to anything but nothing
+/// (<https://no-color.org>).
+pub fn wants_color(
+    choice: ColorChoice,
+    no_color: Option<&OsStr>,
+    stdout_is_terminal: bool,
+) -> bool {
+    match choice {
+        ColorChoice::Always => true,
+        ColorChoice::Never => false,
+        ColorChoice::Auto => stdout_is_terminal && no_color.is_none_or(OsStr::is_empty),
+    }
+}
+
 /// Draws `text` as the progress line.
 pub fn draw(text: &str) {
     write_stderr(&frame(text));
@@ -46,7 +64,11 @@ fn write_stderr(text: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::{WIDTH, fit, frame};
+    use std::ffi::OsStr;
+
+    use clap::ColorChoice::{Always, Auto, Never};
+
+    use super::{WIDTH, fit, frame, wants_color};
 
     #[test]
     fn a_frame_rewinds_draws_and_erases_the_rest() {
@@ -70,5 +92,23 @@ mod tests {
     fn cutting_counts_characters_not_bytes() {
         let cut = fit(&"é".repeat(WIDTH + 5));
         assert_eq!(cut.chars().count(), WIDTH);
+    }
+
+    #[test]
+    fn auto_colors_a_terminal() {
+        assert!(wants_color(Auto, None, true));
+        assert!(!wants_color(Auto, None, false));
+    }
+
+    #[test]
+    fn auto_yields_to_no_color_unless_it_is_empty() {
+        assert!(!wants_color(Auto, Some(OsStr::new("1")), true));
+        assert!(wants_color(Auto, Some(OsStr::new("")), true));
+    }
+
+    #[test]
+    fn always_and_never_ignore_the_environment() {
+        assert!(wants_color(Always, Some(OsStr::new("1")), false));
+        assert!(!wants_color(Never, None, true));
     }
 }

@@ -35,6 +35,7 @@ mod reason;
 mod report;
 mod requester;
 mod roots;
+mod style;
 mod walk;
 
 #[cfg(test)]

@@ -3,37 +3,15 @@
 use std::sync::{Arc, Mutex};
 
 use assert_cmd::Command;
-use nix_derivation::StorePath;
 use nix_why_build::{Options, Progress};
 
+#[path = "support/chain.rs"]
+mod chain;
 #[path = "support/fixture.rs"]
 mod fixture;
 
-use fixture::{FakeStore, PUBLIC, SECRET, file_cache, narinfo, spec};
-
-/// `top` -> `app-1.0` (missed, so a root) -> `lib-1.0` (served).
-struct Chain {
-    store: FakeStore,
-    cache: tempfile::TempDir,
-    top: StorePath,
-}
-
-impl Chain {
-    fn new() -> Self {
-        let store = FakeStore::new();
-        let lib = store.add(&spec("lib-1.0").env("pname", "lib"));
-        let app = store.add(&spec("app-1.0").env("pname", "app").input(&lib, &["out"]));
-        let top = store.add(&spec("system").input(&app, &["out"]));
-        let cache = tempfile::tempdir().expect("tempdir");
-        let lib_out = store.output(&lib, "out");
-        file_cache(cache.path(), &[(&lib_out, narinfo(&lib_out, Some(SECRET)))]);
-        Self { store, cache, top }
-    }
-
-    fn url(&self) -> String {
-        format!("file://{}", self.cache.path().display())
-    }
-}
+use chain::Chain;
+use fixture::PUBLIC;
 
 #[tokio::test]
 async fn explain_reports_each_phase_to_the_callback() {
