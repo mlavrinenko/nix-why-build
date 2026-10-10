@@ -11,7 +11,7 @@
   difficulty: 5,
   kind: "test",
   tags: ("tests", "eval"),
-  estimate: (src-files: 1),
+  estimate: (src-files: 0),
   x-goals: (
     product: (
       store-independent: neutral,
@@ -46,9 +46,8 @@
 
 == Changes
 
-- `tests/nix_exprs.rs`: the tests, red against a deliberately broken copy of each expression before they go green.
+- `src/nix_tests.rs`: the tests, a `#[cfg(test)]` module calling `counterparts::find` and `modules::load`, which stay reachable once `narrow-the-public-api-to-what-callers-use` makes them private. Red against a deliberately broken copy of each expression before they go green.
 - `tests/fixtures/`: the fake nixpkgs and configuration.
-- `src/counterparts.rs`: expose the expression builder to integration tests only if it is not reachable already.
 
 
 == Out of scope
