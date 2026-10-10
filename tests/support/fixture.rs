@@ -1,8 +1,12 @@
 //! A fake store directory of hand-written `ATerm` `.drv` files, for tests.
+#![allow(dead_code)]
 
 use std::cell::Cell;
 use std::fmt::Write as _;
 use std::path::Path;
+
+use nix_compat::narinfo::{NarInfo, parse_keypair};
+use nix_compat::nixbase32;
 
 use nix_compat::store_path::StorePath;
 
@@ -183,4 +187,36 @@ fn quote(text: &str) -> String {
 pub fn absent_drv(name: &str) -> StorePath {
     StorePath::from_name_and_digest_fixed(&format!("{name}.drv"), [0xee; 20])
         .expect("valid drv path")
+}
+
+/// Signs narinfos in a test cache.
+pub const SECRET: &str = "test-cache-1:2EJ0WJNsrKIJRZSuip51j78aJfN8nPVFj/geAmnSeaa1qx20A+Oh9p6Lwvk6VlxBeipwM3pm5VprKHOI+OzCTA==";
+/// Verifies [`SECRET`]'s signatures.
+pub const PUBLIC: &str = "test-cache-1:tasdtAPjofaei8L5OlZcQXoqcDN6ZuVaayhziPjswkw=";
+
+/// A narinfo for `path`, signed with `secret` when one is given.
+pub fn narinfo(path: &StorePath, secret: Option<&str>) -> String {
+    let text = format!(
+        "StorePath: {}\nURL: nar/x.nar.xz\nCompression: xz\nNarHash: sha256:{}\nNarSize: 42\nReferences: \n",
+        path.to_absolute_path(),
+        nixbase32::encode(&[7; 32]),
+    );
+    let mut info = NarInfo::parse(&text).expect("valid narinfo");
+    let Some(secret) = secret else {
+        return info.to_string();
+    };
+    let (signer, _) = parse_keypair(secret).expect("valid keypair");
+    info.add_signature(&signer);
+    info.to_string()
+}
+
+pub fn narinfo_name(path: &StorePath) -> String {
+    format!("{}.narinfo", nixbase32::encode(path.digest()))
+}
+
+pub fn file_cache(dir: &Path, entries: &[(&StorePath, String)]) -> String {
+    for (path, body) in entries {
+        std::fs::write(dir.join(narinfo_name(path)), body).expect("write narinfo");
+    }
+    format!("file://{}", dir.display())
 }

@@ -1,48 +1,17 @@
 use std::collections::HashMap;
-use std::path::Path;
 
-use nix_compat::narinfo::{NarInfo, parse_keypair};
-use nix_compat::nixbase32;
 use nix_compat::store_path::StorePath;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use super::{Availability, Substituters};
+use crate::fixture_tests::{PUBLIC, SECRET, file_cache, narinfo, narinfo_name};
 
-const SECRET: &str = "test-cache-1:2EJ0WJNsrKIJRZSuip51j78aJfN8nPVFj/geAmnSeaa1qx20A+Oh9p6Lwvk6VlxBeipwM3pm5VprKHOI+OzCTA==";
-const PUBLIC: &str = "test-cache-1:tasdtAPjofaei8L5OlZcQXoqcDN6ZuVaayhziPjswkw=";
 const ROGUE: &str = "rogue-1:WSWrsHVFjRnBaZytl7Cdh0eHb6zbSz9y24G6xtmQbVWvi0KYP2v7rj4+gTTXRbYWWsryCjAF3oGDOq3FTlJeEA==";
 /// Claims the trusted key's name, signs with another secret.
 const FORGED: &str = "test-cache-1:lt2k779oTCU/mF2pbGitQK2tcmjqAMhi9KRBA5s7Dkg54t8HZgNEyhYbmGfTmyfSgLV6C6yQZrm6zMjxsTGkUQ==";
 
 fn store_path(seed: u8, name: &str) -> StorePath {
     StorePath::from_name_and_digest_fixed(name, [seed; 20]).expect("valid store path")
-}
-
-/// A narinfo for `path`, signed with `secret` when one is given.
-fn narinfo(path: &StorePath, secret: Option<&str>) -> String {
-    let text = format!(
-        "StorePath: {}\nURL: nar/x.nar.xz\nCompression: xz\nNarHash: sha256:{}\nNarSize: 42\nReferences: \n",
-        path.to_absolute_path(),
-        nixbase32::encode(&[7; 32]),
-    );
-    let mut info = NarInfo::parse(&text).expect("valid narinfo");
-    let Some(secret) = secret else {
-        return info.to_string();
-    };
-    let (signer, _) = parse_keypair(secret).expect("valid keypair");
-    info.add_signature(&signer);
-    info.to_string()
-}
-
-fn narinfo_name(path: &StorePath) -> String {
-    format!("{}.narinfo", nixbase32::encode(path.digest()))
-}
-
-fn file_cache(dir: &Path, entries: &[(&StorePath, String)]) -> String {
-    for (path, body) in entries {
-        std::fs::write(dir.join(narinfo_name(path)), body).expect("write narinfo");
-    }
-    format!("file://{}", dir.display())
 }
 
 fn substituters(urls: &[String], require_sigs: bool) -> Substituters {

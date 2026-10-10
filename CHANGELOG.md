@@ -14,3 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `walk::walk` reads `.drv` files with `nix-compat` and walks from a toplevel
   down to what substituters serve, asking only about the outputs a parent
   wants.
+- `nix-why-build <installable>` prints every package no substituter serves,
+  one per line, with a tally of hidden config glue on stderr; `--json` prints
+  the whole report. NixOS, home-manager and nix-darwin configurations resolve
+  to what they build. `explain()` is the same thing as a library call.
