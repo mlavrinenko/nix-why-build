@@ -27,8 +27,8 @@ groups:
       src/nix_index_tests.rs: 556de95404f9a994ae60249db4d2a509837238c47c835c4b54fae85c5a54eae5
       src/nix_tests.rs: 0f1121334572e0dab2d997bbadf3d1a3b005ff74bdccd611db1994de6973d4dd
       src/progress.rs: 15251bf0c3d0583e135f27acac9e267d17997c909d8350de58d4c7768c4893d4
-      src/reason.rs: 17708f2e3ece634986b7fc1d1c541aaadb034cc41ab81ebac9d47c08d08e1fc6
-      src/reason_tests.rs: 6423411c5e9550864f7f927da5fb5c9bd400e90fa060dd1063ffda97beb6bfa5
+      src/reason.rs: 6b47f6c5324da306a92b5df93f7ee9202911ff1b1656c7052b5fb1a0d5f4fce5
+      src/reason_tests.rs: d6454479b074289faef0f24611b288eef9734ea47d4c077ed51cc5bcb5c57d53
       src/report.rs: 9393e7a28fe9ef1be88bc92529808db9d09ce30734c8ae2b793b810d81e76594
       src/report_tests.rs: 7a95b98dcb439c8ea587fae5a7cc85a22b94f14bf94789713fceb08cdb7ca4c3
       src/requester.rs: 97d0879ff73eab709ecfc3312c9ef564aa146294d32758bed29184a22b90da04
@@ -61,4 +61,4 @@ groups:
     source:
       Cargo.toml: ad4a31956cc10a75082ef39459a715114d6b66d9cf99fd24874e71edfd796974
     dependents:
-      CHANGELOG.md: fa05c11ca2ac31087d573795f4ad7d1da001466e0a7ee5363a80739d1a2877c0
+      CHANGELOG.md: b53d75cfb714b43b879655ac7982db08669c45999e9616f6d4850c23b750b3a3

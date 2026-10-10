@@ -52,7 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - It runs on a nix with flakes switched off, and `| head` ends it quietly.
 - As a library, `nix_why_build::explain` returns the same report. It prints
   nothing, takes an optional progress callback, and exports only what a caller
-  needs, so it can grow without breaking you.
+  needs, so it can grow without breaking you. A `Reason` prints as
+  `category: evidence`.
 - Linux release binaries are static, so they run on NixOS. The flake ships
   `overlays.default`, and `nix build .#static` reproduces the release binary.
 - Every dependency is under a permissive license, so the crate stays MIT.

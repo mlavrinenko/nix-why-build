@@ -438,3 +438,14 @@ fn drv_names_drop_the_hash_and_the_suffix() {
     );
     assert_eq!(super::drv_name("plain"), "plain");
 }
+
+#[test]
+fn a_reason_prints_its_category_then_its_evidence() {
+    let reason = Reason::Unfree {
+        against: "nixpkgs#steam".to_owned(),
+    };
+    assert_eq!(
+        reason.to_string(),
+        "unfree: Hydra skips unfree nixpkgs#steam"
+    );
+}

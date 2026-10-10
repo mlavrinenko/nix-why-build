@@ -116,6 +116,14 @@ impl Reason {
     }
 }
 
+/// `overridden: vs nixpkgs#hello (cached): postPatch added`, the category
+/// then the evidence.
+impl std::fmt::Display for Reason {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "{}: {}", self.category(), self.detail())
+    }
+}
+
 /// `postPatch added; cmakeFlags changed; input blas-3 added`.
 fn describe(diff: &Diff) -> String {
     let parts = [
