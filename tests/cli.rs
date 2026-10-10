@@ -67,14 +67,27 @@ fn cache_url(world: &World) -> String {
     format!("file://{}", world.cache.path().display())
 }
 
+/// Shell line for a fake `nix` to drop the `--extra-experimental-features`
+/// pair, so `$1` is the subcommand.
+const DROP_FEATURES: &str = "[ \"$1\" = --extra-experimental-features ] && shift 2\n";
+
+/// Shell lines opening a fake `nix`: log the first line of the call to `log`,
+/// then drop the features pair.
+fn nix_prologue(log: &Path) -> String {
+    format!(
+        "printf '%s\\n' \"$*\" | head -n 1 >> {}\n{DROP_FEATURES}",
+        log.display()
+    )
+}
+
 /// A `nix` on `PATH` that answers `config show --json` and `eval`, logging
-/// its arguments to `args.log`.
+/// the first line of each call to `args.log`.
 /// `--apply` evaluations (the option index) print `index`, `flake archive`
 /// prints a flake whose source is `/nix/store/s-source`.
 fn fake_nix(dir: &Path, drv: &str, config: &str, index: &str) -> String {
     let script = format!(
-        "#!/bin/sh\necho \"$@\" >> {log}\ncase \"$1\" in\n  config) printf '%s' '{config}' ;;\n  flake) printf '%s' '{{\"path\":\"/nix/store/s-source\"}}' ;;\n  eval) case \"$*\" in\n    *--apply*) printf '%s' '{index}' ;;\n    *) printf '%s' '{drv}' ;;\n  esac ;;\nesac\n",
-        log = dir.join("args.log").display(),
+        "#!/bin/sh\n{prologue}case \"$1\" in\n  config) printf '%s' '{config}' ;;\n  flake) printf '%s' '{{\"path\":\"/nix/store/s-source\"}}' ;;\n  eval) case \"$*\" in\n    *--apply*) printf '%s' '{index}' ;;\n    *) printf '%s' '{drv}' ;;\n  esac ;;\nesac\n",
+        prologue = nix_prologue(&dir.join("args.log")),
     );
     install_nix(dir, &script)
 }
@@ -278,7 +291,7 @@ fn a_failing_option_index_is_a_warning_not_a_failure() {
     let world = world();
     let bin = tempfile::tempdir().expect("tempdir");
     let script = format!(
-        "#!/bin/sh\ncase \"$*\" in\n  *--apply*) printf 'evaluating...\\nerror: infinite recursion encountered\\n  at x.nix\\n' >&2; exit 1 ;;\n  eval*) printf '%s' '{}' ;;\n  flake*) printf '%s' '{{\"path\":\"/s\"}}' ;;\nesac\n",
+        "#!/bin/sh\n{DROP_FEATURES}case \"$*\" in\n  *--apply*) printf 'evaluating...\\nerror: infinite recursion encountered\\n  at x.nix\\n' >&2; exit 1 ;;\n  eval*) printf '%s' '{}' ;;\n  flake*) printf '%s' '{{\"path\":\"/s\"}}' ;;\nesac\n",
         world.top.to_absolute_path()
     );
     let path = install_nix(bin.path(), &script);
@@ -297,4 +310,31 @@ fn a_failing_option_index_is_a_warning_not_a_failure() {
         .stderr(predicate::str::starts_with(
             "warning: module files unknown: error: infinite recursion encountered\n",
         ));
+}
+
+#[test]
+fn every_nix_call_enables_the_features_it_needs() {
+    let world = world();
+    let bin = tempfile::tempdir().expect("tempdir");
+    let index = r#"{"scopes":[]}"#;
+    let path = fake_nix(bin.path(), &world.top.to_absolute_path(), "{}", index);
+    cmd(&world)
+        .env("PATH", path)
+        .args([
+            ".#nixosConfigurations.box",
+            "--substituter",
+            &cache_url(&world),
+            "--trusted-key",
+            PUBLIC,
+        ])
+        .assert()
+        .success();
+    let log = std::fs::read_to_string(bin.path().join("args.log")).expect("log");
+    assert!(log.lines().count() >= 3, "{log}");
+    for call in log.lines() {
+        assert!(
+            call.starts_with("--extra-experimental-features nix-command flakes "),
+            "{call}"
+        );
+    }
 }

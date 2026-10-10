@@ -74,7 +74,9 @@ pub enum EvalError {
     },
 }
 
-/// Runs `nix` with `args` and returns its stdout.
+/// Runs `nix` with `args` and returns its stdout. It enables `nix-command`
+/// and `flakes` for the call, as `nixos-rebuild --flake` does, so a nix that
+/// has them off in its configuration still works.
 ///
 /// # Errors
 ///
@@ -82,6 +84,7 @@ pub enum EvalError {
 /// exits non-zero.
 pub async fn nix(args: &[&str]) -> Result<String, EvalError> {
     let output = tokio::process::Command::new("nix")
+        .args(["--extra-experimental-features", "nix-command flakes"])
         .args(args)
         .output()
         .await?;

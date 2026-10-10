@@ -60,3 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `just oracle <installable>` diffs `to_build` with `nix build --dry-run` in a
   scratch store holding only the derivation closure; it prints nothing when
   they agree.
+- Every `nix` call enables `nix-command` and `flakes` itself, as
+  `nixos-rebuild --flake` does, so a nix with them off in its configuration
+  still works.
