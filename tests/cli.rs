@@ -389,3 +389,41 @@ fn a_drv_path_runs_without_asking_nix_anything() {
     let log = nix_calls(&world, &world.top.to_absolute_path());
     assert_eq!(log, "");
 }
+
+/// The binary as a plain `std` command, whose stdio the test can wire up.
+fn plain_cmd(world: &World) -> std::process::Command {
+    let mut cmd = std::process::Command::new(cmd(world).get_program());
+    cmd.arg("--store-dir")
+        .arg(world.store.dir())
+        .arg(world.top.to_absolute_path())
+        .args(["--substituter", &cache_url(world), "--trusted-key", PUBLIC]);
+    cmd
+}
+
+#[test]
+fn a_closed_stdout_ends_the_run_quietly() {
+    let world = world();
+    let mut child = plain_cmd(&world)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .expect("spawn");
+    drop(child.stdout.take());
+    let output = child.wait_with_output().expect("wait");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!stderr.contains("Broken pipe"), "{stderr}");
+    assert!(output.status.success(), "{:?} {stderr}", output.status);
+}
+
+#[test]
+fn any_other_write_error_still_fails_loudly() {
+    let world = world();
+    let full = std::fs::OpenOptions::new()
+        .write(true)
+        .open("/dev/full")
+        .expect("/dev/full");
+    let output = plain_cmd(&world).stdout(full).output().expect("run");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!output.status.success(), "{stderr}");
+    assert!(stderr.contains("No space left on device"), "{stderr}");
+}

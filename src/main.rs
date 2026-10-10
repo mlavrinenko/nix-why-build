@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{ErrorKind, Write};
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -35,14 +35,21 @@ async fn main() -> Result<()> {
         store_dir: cli.store_dir,
     };
     let report = nix_why_build::explain(&options).await?;
-    if cli.json {
+    let written = if cli.json {
         writeln!(
             std::io::stdout(),
             "{}",
             serde_json::to_string_pretty(&report)?
-        )?;
+        )
     } else {
-        write!(std::io::stdout(), "{}", report.human())?;
+        write!(std::io::stdout(), "{}", report.human())
+    };
+    match written {
+        // `| head` and a pager quit early close stdout; that is no failure.
+        Err(err) if err.kind() == ErrorKind::BrokenPipe => return Ok(()),
+        other => other?,
+    }
+    if !cli.json {
         write!(std::io::stderr(), "{}", report.summary())?;
     }
     Ok(())

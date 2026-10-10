@@ -68,3 +68,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reference without `#` explains its default package. A configuration with a
   quoted, dotted name (`.#nixosConfigurations."host.lan"`) resolves to its
   toplevel and gets its option index.
+- A closed stdout ends the run quietly with exit 0, as `ripgrep` does, so
+  `nix-why-build ... | head` no longer ends in `Error: Broken pipe`. Any other
+  write error still fails.

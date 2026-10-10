@@ -19,7 +19,7 @@ groups:
       src/lib.rs: 05313841dec38b1ef8b333cf847cd202d03a413bd3ce3a2f0521208893c23d3a
       src/lookup.rs: 75ad81b2045f9fc4b3638cb7e1cdd7e9c873a933774503a9615ca65b8ff10979
       src/lookup_tests.rs: f09c5983e0dfa5752f31b91c1641399687e9b53ca065625ce17c1abbd1fdff7b
-      src/main.rs: 1c3d120449953bfd93edfa8424e2962928cdca5f8dcc60390f8ce264dfd0ef72
+      src/main.rs: 5222128edea6946168c6b80e581b4326c4177d557803cc2c7f6cf62eec940a91
       src/modules.rs: 997b732a6f8045833d63c1ee49a74956fde63285b28c7fb8961a2b723e74f430
       src/modules_tests.rs: 2d5db92667cab9ad2a0936a1523532daf42ca7dc7fe9eb7e28dfd7eb4e5bceca
       src/reason.rs: d186aaf188c67bb32fd4e887ac62d8d59456ca8e2cb0044b828c4cc30caab69a
@@ -48,4 +48,4 @@ groups:
     source:
       Cargo.toml: ed6c13a236c92abac8f9395e0f7c9204d22a9e449e9f706b7a3381d0c9950a60
     dependents:
-      CHANGELOG.md: 8ff2f4165e17bd516ce07c428b70d38f16d08204795f5cfdd78da19e5863318d
+      CHANGELOG.md: 9284327b3baa403bcd578f5e8ee16745bc8513df36559117b9f348843add8028
