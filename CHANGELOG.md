@@ -39,3 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `diff::Diff` names what differs between a root and its nixpkgs counterpart:
   attributes added, removed and changed (structured attrs key by key, store
   hashes ignored), and inputs added, removed or built differently.
+- `counterparts::find` looks roots up in every nixpkgs-like input of the
+  configuration, under a few attribute guesses and `pkgsCuda` for CUDA roots,
+  with each candidate's `meta.unfree`, `meta.broken` and
+  `meta.hydraPlatforms`.

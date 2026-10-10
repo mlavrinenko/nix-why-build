@@ -6,16 +6,19 @@ groups:
       src/cache.rs: 50f012b652acaa2dbbd613578698bffa3151764d475f50cc7be6af04a4225029
       src/cache_tests.rs: 141d61c17f287ec7085788253b17cdbdace55aa7f680176d4728b38e4bbcb161
       src/config.rs: 365b97c11a2d08691e36f72b10930c9b7ef13740bfbe18d7652b4f387010b077
+      src/counterparts.nix: 210ab0f18950e4a2b6c70d71992a8e81a87364bf2c31d91a9a9a31bcd32374d9
+      src/counterparts.rs: ba53a7f31145300360ee08c3fd67a6cab9a10c10ebb3e3ef4245b0ad6f900ab6
+      src/counterparts_tests.rs: 9ed68cd6a05c5ee39276b5fb831b57897f10b6a27c92754d09726f64c37a15e2
       src/diff.rs: a020a7d559e185cd422df34cc886f3a519a433f1d9d10de484643c69d8ded643
       src/diff_tests.rs: 3f995daa3e77866dce8c7f0e6a4581e2ba6f47f70f18a5e177f31f8c9d12c92c
-      src/drv.rs: cdc6d85797ad9ada32e8057bac916bfc91a4e337f2d9e497a5a6d98013e5ddfe
-      src/drv_tests.rs: f639fbe24b69d88abe776f05bf224488da523dbea4cd961d426f43fa8539a533
-      src/eval.rs: 3aeade6bee48dfe90194518c5491eaf89730bb1be745bc9dd6f9675444258549
+      src/drv.rs: d6e1abaf4f87b96bb3b19c2aaaf341ea734d669fed09021c82327b1bfb7087d7
+      src/drv_tests.rs: 8a5a640a002fa7e567009caf9358f35bc4ccc0c32db85021dac80247a37c76e3
+      src/eval.rs: 97bcc6b3e4935c87189ddf11c1850841484f633e55c20ff0ef2978a2859dfab6
       src/index.nix: 84f328d1382adb201c2df743fea30f06bc6f8771a4686bba3bf50752fb958c3e
-      src/lib.rs: 779e8db1c7432b99ca986e2b69ad8197ff15d27c4c6e906035c27a247a695c5d
+      src/lib.rs: 0aa7a2e3fe9b572ced4bce15527a0afc80348d1edaf47db697f00df4378ef1b2
       src/main.rs: 1c3d120449953bfd93edfa8424e2962928cdca5f8dcc60390f8ce264dfd0ef72
-      src/modules.rs: 2c36e9c0c85199820a2ea1fe3dc8e47053d52886199d53a03f8de221d97fb2df
-      src/modules_tests.rs: 00d884d544d86e7e31c1aa69f6a3f9c6aaf4bd73b0f07a6d2d56c60b34e68256
+      src/modules.rs: 3e6a46f0b959a852f93a68b955887762db469aeb53cb3505ad062ae591bdf5af
+      src/modules_tests.rs: 45e1ade67ee8c9bb2bf60f350e6cf7639a0df60ae1266f1c499938df2110af69
       src/report.rs: 428d77cdcf7b1a7d03db5a637ce883957bc7484cdb47a9148ed88c3472f8809c
       src/report_tests.rs: 73ce27fdfb80dbd980f2250e717eb413691fb7489ea3e19e5026c1b1952a873f
       src/requester.rs: c231bb75fbb2c5c72aee63ae70e9a1e7dfb61bd6b93cb49de2fba25b7779da6d
@@ -40,4 +43,4 @@ groups:
     source:
       Cargo.toml: d8a61861358dc14b8ae74c914e30ec6befe4785ad5151fdfa3ddf52fa68609f0
     dependents:
-      CHANGELOG.md: fa7244b4d9a70884d65de23a541c26ae0ffa11d59ca829858f76db3b6a9914c3
+      CHANGELOG.md: 729ca4285f85629bd939fbd3e59f16bcea73d085839ae8f6a9b33434ce5891fc

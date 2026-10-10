@@ -16,6 +16,8 @@ pub struct Drv {
     pub pname: Option<String>,
     /// `version`, from `env` or structured attrs.
     pub version: Option<String>,
+    /// The platform it builds on, like `x86_64-linux`.
+    pub system: String,
     /// Whether it is a fixed-output derivation, a fetch.
     pub fixed_output: bool,
     /// Output name to output path.
@@ -74,6 +76,7 @@ pub fn read(store_dir: &Path, path: &StorePath) -> Result<Drv, DrvError> {
         name: path.name().trim_end_matches(".drv").to_owned(),
         pname: attr("pname"),
         version: attr("version"),
+        system: builder.system.clone(),
         fixed_output: outputs.is_fixed(),
         outputs: outputs
             .iter()

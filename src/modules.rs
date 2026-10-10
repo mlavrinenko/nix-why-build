@@ -5,6 +5,7 @@
 //! request against it is plain Rust.
 
 use std::collections::BTreeMap;
+use std::path::Path;
 
 use serde::Deserialize;
 
@@ -183,7 +184,7 @@ fn path_safe(name: &str) -> String {
 pub async fn load(config_attr: &str) -> Result<Index, String> {
     let json = crate::eval::nix(&["eval", "--json", config_attr, "--apply", INDEX_EXPR])
         .await
-        .map_err(|err| first_line(&err.to_string()))?;
+        .map_err(|err| crate::eval::first_error(&err.to_string()))?;
     serde_json::from_str(&json).map_err(|err| err.to_string())
 }
 
@@ -195,17 +196,8 @@ pub async fn load(config_attr: &str) -> Result<Index, String> {
 pub async fn labels(flake: &str) -> Result<Labels, String> {
     let json = crate::eval::nix(&["flake", "archive", "--json", "--dry-run", flake])
         .await
-        .map_err(|err| first_line(&err.to_string()))?;
+        .map_err(|err| crate::eval::first_error(&err.to_string()))?;
     Labels::parse(&json).map_err(|err| err.to_string())
-}
-
-fn first_line(text: &str) -> String {
-    text.lines()
-        .find(|line| line.contains("error"))
-        .or_else(|| text.lines().next())
-        .unwrap_or_default()
-        .trim()
-        .to_owned()
 }
 
 /// Short labels for module files: relative to the configuration's flake, or
@@ -234,6 +226,28 @@ impl Labels {
         let mut roots = Vec::new();
         collect(&archive, "", &mut roots);
         Ok(Self { roots })
+    }
+
+    /// The flake and its inputs that look like nixpkgs: their source holds
+    /// `pkgs/top-level/all-packages.nix`. The flake itself is labelled `self`.
+    #[must_use]
+    pub fn nixpkgs_inputs(&self) -> Vec<crate::counterparts::Input> {
+        self.roots
+            .iter()
+            .filter(|(path, _)| {
+                Path::new(path)
+                    .join("pkgs/top-level/all-packages.nix")
+                    .is_file()
+            })
+            .map(|(path, label)| crate::counterparts::Input {
+                label: if label.is_empty() {
+                    "self".to_owned()
+                } else {
+                    label.clone()
+                },
+                path: path.clone(),
+            })
+            .collect()
     }
 
     /// `apps/x.nix` for the flake's own file, `nixpkgs:nixos/…` for an

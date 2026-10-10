@@ -96,6 +96,17 @@ pub async fn nix(args: &[&str]) -> Result<String, EvalError> {
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
+/// The first line of nix's complaint that says `error`, else its first line.
+#[must_use]
+pub fn first_error(text: &str) -> String {
+    text.lines()
+        .find(|line| line.contains("error"))
+        .or_else(|| text.lines().next())
+        .unwrap_or_default()
+        .trim()
+        .to_owned()
+}
+
 /// The `.drv` an installable builds: the path itself when it is one, else
 /// `nix eval --raw <toplevel>.drvPath`, which also writes the `.drv` files.
 ///

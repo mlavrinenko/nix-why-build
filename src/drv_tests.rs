@@ -26,6 +26,7 @@ fn reads_name_outputs_and_wanted_inputs() {
         BTreeMap::from([(lib, BTreeSet::from(["dev".to_owned()]))])
     );
     assert!(!drv.fixed_output);
+    assert_eq!(drv.system, "x86_64-linux");
 }
 
 #[test]

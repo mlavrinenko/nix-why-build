@@ -352,3 +352,33 @@ async fn the_index_expression_reads_definitions_and_sources() {
     );
     assert_eq!(scope.attrs.get("systemd.timers"), Some(&vec![]));
 }
+
+#[test]
+fn nixpkgs_inputs_are_those_holding_all_packages() {
+    let nixpkgs = tempfile::tempdir().expect("tempdir");
+    let other = tempfile::tempdir().expect("tempdir");
+    let top = nixpkgs.path().join("pkgs/top-level");
+    std::fs::create_dir_all(&top).expect("mkdir");
+    std::fs::write(top.join("all-packages.nix"), "{ }").expect("write");
+    let json = format!(
+        r#"{{"path": "{}", "inputs": {{"unstable": {{"path": "{}"}}, "flake-parts": {{"path": "/nix/store/none"}}}}}}"#,
+        other.path().display(),
+        nixpkgs.path().display()
+    );
+    let labels = Labels::parse(&json).expect("valid");
+    assert_eq!(
+        labels.nixpkgs_inputs(),
+        [crate::counterparts::Input {
+            label: "unstable".to_owned(),
+            path: nixpkgs.path().display().to_string()
+        }]
+    );
+    let own = format!(r#"{{"path": "{}"}}"#, nixpkgs.path().display());
+    assert_eq!(
+        Labels::parse(&own).expect("valid").nixpkgs_inputs(),
+        [crate::counterparts::Input {
+            label: "self".to_owned(),
+            path: nixpkgs.path().display().to_string()
+        }]
+    );
+}
