@@ -83,7 +83,9 @@ $ nix-why-build /nix/store/...-foo.drv          # a .drv you already have
 
 Caches and keys come from `nix config show`, `extra-substituters` included.
 A narinfo only counts when a trusted key signed it, like nix itself. Flags
-override both.
+override both. A cache it can't ask (`s3://`, `ssh-ng://`) or can't reach
+is skipped with a warning and counts as a miss, like nix does, so one dead
+cache doesn't hide your roots.
 
 ```console
 $ nix-why-build .#nixosConfigurations.tank \

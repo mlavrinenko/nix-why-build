@@ -138,6 +138,7 @@ async fn a_narinfo_for_another_path_is_unknown() {
         ask(&subs, &path).await,
         Availability::Unknown { reason } if reason.contains("narinfo is for")
     ));
+    assert_eq!(subs.warnings(), Vec::<String>::new());
 }
 
 #[tokio::test]
@@ -177,7 +178,11 @@ async fn http_serves_a_trusted_narinfo_and_misses_on_404() {
 #[tokio::test]
 async fn an_http_server_error_is_unknown_and_names_the_status() {
     let path = store_path(1, "hello-2.12");
-    let routes = HashMap::from([(format!("/{}", narinfo_name(&path)), (503, String::new()))]);
+    let other = store_path(2, "hello-2.12");
+    let routes = HashMap::from([
+        (format!("/{}", narinfo_name(&path)), (503, String::new())),
+        (format!("/{}", narinfo_name(&other)), (503, String::new())),
+    ]);
     let url = http_cache(routes).await;
     let subs = substituters(std::slice::from_ref(&url), true);
     assert_eq!(
@@ -186,6 +191,14 @@ async fn an_http_server_error_is_unknown_and_names_the_status() {
             reason: format!("{url}: HTTP 503 Service Unavailable")
         }
     );
+    assert_eq!(subs.warnings(), Vec::<String>::new());
+    assert!(
+        matches!(
+            ask(&subs, &store_path(2, "hello-2.12")).await,
+            Availability::Unknown { .. }
+        ),
+        "a server error does not disable the substituter"
+    );
 }
 
 #[tokio::test]
@@ -193,7 +206,12 @@ async fn a_later_hit_beats_an_earlier_failure() {
     let full = tempfile::tempdir().expect("tempdir");
     let path = store_path(1, "hello-2.12");
     let served = file_cache(full.path(), &[(&path, narinfo(&path, Some(SECRET)))]);
-    let subs = substituters(&["ssh://builder".to_owned(), served.clone()], true);
+    let broken = http_cache(HashMap::from([(
+        format!("/{}", narinfo_name(&path)),
+        (503, String::new()),
+    )]))
+    .await;
+    let subs = substituters(&[broken, served.clone()], true);
     assert_eq!(
         ask(&subs, &path).await,
         Availability::Served {
@@ -203,13 +221,27 @@ async fn a_later_hit_beats_an_earlier_failure() {
 }
 
 #[tokio::test]
-async fn an_unsupported_scheme_is_unknown() {
-    let subs = substituters(&["ssh://builder".to_owned()], true);
+async fn an_unsupported_scheme_is_left_out_with_one_warning() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let cache = file_cache(dir.path(), &[]);
+    let urls = [
+        "s3://bucket".to_owned(),
+        cache.clone(),
+        "s3://bucket".to_owned(),
+        "ssh-ng://builder".to_owned(),
+    ];
+    let subs = substituters(&urls, true);
+    assert_eq!(subs.urls(), vec![cache.as_str()]);
     assert_eq!(
         ask(&subs, &store_path(1, "hello-2.12")).await,
-        Availability::Unknown {
-            reason: "ssh://builder: unsupported substituter scheme".to_owned()
-        }
+        Availability::Missing
+    );
+    assert_eq!(
+        subs.warnings(),
+        vec![
+            "s3://bucket: unsupported scheme, not asked",
+            "ssh-ng://builder: unsupported scheme, not asked"
+        ]
     );
 }
 
@@ -229,7 +261,7 @@ fn a_repeated_substituter_is_asked_once_and_query_strings_are_ignored() {
         ]
     );
     assert_eq!(
-        format!("{:?}", subs.list.get(1).map(|(_, location)| location)),
+        format!("{:?}", subs.list.get(1).map(|entry| &entry.location)),
         r#"Some(Http("https://cache.example"))"#
     );
 }
@@ -323,7 +355,7 @@ async fn a_stalled_request_is_retried_once_with_more_patience() {
 }
 
 #[tokio::test]
-async fn two_stalls_are_unknown_and_say_so() {
+async fn two_stalls_disable_the_substituter_and_say_so() {
     let path = store_path(1, "hello-2.12");
     let url = http_cache_gated(serving(&path), None, vec![Duration::from_secs(30)]).await;
     let subs =
@@ -331,10 +363,84 @@ async fn two_stalls_are_unknown_and_say_so() {
     let answer = tokio::time::timeout(Duration::from_secs(5), ask(&subs, &path))
         .await
         .expect("gives up in time");
+    assert_eq!(answer, Availability::Missing);
     assert_eq!(
-        answer,
-        Availability::Unknown {
-            reason: format!("{url}: timed out twice")
-        }
+        subs.warnings(),
+        vec![format!(
+            "{url}: unreachable, not asked again: timed out twice"
+        )]
     );
+    let again = tokio::time::timeout(Duration::from_millis(40), ask(&subs, &path))
+        .await
+        .expect("a disabled substituter is not waited on");
+    assert_eq!(again, Availability::Missing);
+}
+
+/// A URL nothing listens on: a port that was bound, then released.
+fn refused() -> (String, std::net::SocketAddr) {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+    let addr = listener.local_addr().expect("local addr");
+    (format!("http://{addr}"), addr)
+}
+
+#[tokio::test]
+async fn a_refused_connection_disables_the_substituter_after_one_failure() {
+    let (url, addr) = refused();
+    let subs = substituters(std::slice::from_ref(&url), true);
+    assert_eq!(
+        ask(&subs, &store_path(1, "hello-2.12")).await,
+        Availability::Missing
+    );
+    let warnings = subs.warnings();
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(
+        warnings
+            .iter()
+            .all(|warning| warning.starts_with(&format!("{url}: unreachable, not asked again: "))),
+        "{warnings:?}"
+    );
+    let revived = tokio::net::TcpListener::bind(addr).await.expect("rebind");
+    assert_eq!(
+        ask(&subs, &store_path(2, "hello-2.12")).await,
+        Availability::Missing
+    );
+    assert!(
+        tokio::time::timeout(Duration::from_millis(100), revived.accept())
+            .await
+            .is_err(),
+        "the second path was sent to the disabled substituter"
+    );
+    assert_eq!(subs.warnings(), warnings);
+}
+
+#[tokio::test]
+async fn an_unreachable_substituter_does_not_hide_a_later_miss_or_hit() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let path = store_path(1, "hello-2.12");
+    let cache = file_cache(dir.path(), &[(&path, narinfo(&path, Some(SECRET)))]);
+    let subs = substituters(&[refused().0, cache.clone()], true);
+    assert_eq!(
+        ask(&subs, &store_path(2, "absent-1.0")).await,
+        Availability::Missing
+    );
+    assert_eq!(
+        ask(&subs, &path).await,
+        Availability::Served { substituter: cache }
+    );
+}
+
+/// `.invalid` never resolves (RFC 6761). With or without a resolver the
+/// request fails before any answer, which disables the substituter.
+#[tokio::test]
+async fn a_name_that_does_not_resolve_disables_the_substituter() {
+    let url = "http://nwb-no-such-host.invalid".to_owned();
+    let subs =
+        substituters(std::slice::from_ref(&url), true).with_patience(Duration::from_millis(500));
+    assert_eq!(
+        ask(&subs, &store_path(1, "hello-2.12")).await,
+        Availability::Missing
+    );
+    let warnings = subs.warnings();
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(warnings.iter().all(|warning| warning.starts_with(&url)));
 }

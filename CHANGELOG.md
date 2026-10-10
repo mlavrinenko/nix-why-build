@@ -82,3 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   that sets it: `environment.systemPackages (apps/audiocpp.nix,
   nixpkgs:nixos/modules/programs/steam.nix +3)` where the option used to
   fill both slots with a file each.
+- A substituter nix-why-build cannot ask (`s3://`, `ssh-ng://`) is left out,
+  and one it cannot reach (refused, no DNS, no answer twice) is disabled after
+  its first failure, each with one warning; its paths count as misses, as nix
+  treats a cache it cannot reach, so roots stay roots and a dead cache costs
+  one wait per run.

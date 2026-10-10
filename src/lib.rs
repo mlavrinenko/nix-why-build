@@ -136,6 +136,8 @@ pub async fn explain(options: &Options) -> Result<Report, Error> {
     };
     let (reasons, warnings) =
         lookup::classify_roots(&options.store_dir, &graph, &split, flake, &substituters).await;
+    // Only now: the walk and the root lookup both ask the substituters.
+    report.warnings.extend(substituters.warnings());
     report.warnings.extend(warnings);
     report.set_reasons(&reasons);
     match index {

@@ -456,3 +456,41 @@ fn flake_inputs_that_cannot_be_listed_are_a_warning_and_the_reason() {
             "warning: flake inputs unknown: error: boom\n",
         ));
 }
+
+#[test]
+fn an_unsupported_substituter_is_a_warning_and_the_run_goes_on() {
+    let world = world();
+    let args = [
+        "--substituter",
+        "s3://bucket",
+        "--substituter",
+        &cache_url(&world),
+        "--trusted-key",
+        PUBLIC,
+    ];
+    cmd(&world)
+        .arg(world.top.to_absolute_path())
+        .args(args)
+        .assert()
+        .success()
+        .stdout(GROUPED)
+        .stderr(
+            "warning: s3://bucket: unsupported scheme, not asked\n2 roots, 2 packages to build, 4 more without a pname\n",
+        );
+    let output = cmd(&world)
+        .arg(world.top.to_absolute_path())
+        .args(args)
+        .arg("--json")
+        .output()
+        .expect("runs");
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).expect("json");
+    assert_eq!(
+        at(&report, "/substituters"),
+        serde_json::json!([cache_url(&world)])
+    );
+    assert_eq!(
+        at(&report, "/warnings"),
+        serde_json::json!(["s3://bucket: unsupported scheme, not asked"])
+    );
+    assert_eq!(at(&report, "/unknown"), serde_json::json!([]));
+}
