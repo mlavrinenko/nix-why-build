@@ -4,7 +4,7 @@ use crate::fixture_tests::{DrvSpec, FakeCache as Fake, FakeStore, absent_drv, sp
 
 use crate::cache::Availability;
 
-use super::{Graph, Query, Verdict, walk};
+use super::{Graph, Level, Query, Verdict, walk};
 
 fn verdict<'a>(graph: &'a Graph, path: &StorePath) -> Option<&'a Verdict> {
     graph.nodes.get(path).map(|node| &node.verdict)
@@ -19,7 +19,7 @@ fn built(graph: &Graph) -> Vec<String> {
 }
 
 async fn run(store: &FakeStore, top: &StorePath, fake: &Fake) -> Graph {
-    walk(store.dir(), top, fake).await
+    walk(store.dir(), top, fake, &|_| {}).await
 }
 
 fn serving(served: Vec<StorePath>) -> Fake {
@@ -56,12 +56,18 @@ async fn stops_at_a_served_input_without_reading_below_it() {
     assert_eq!(built(&graph), ["top"]);
 }
 
-#[tokio::test]
-async fn descends_through_every_miss() {
-    let store = FakeStore::new();
+/// `top` -> `mid-1` -> `leaf-1`; returns them leaf first.
+fn chain(store: &FakeStore) -> (StorePath, StorePath, StorePath) {
     let leaf = store.add(&spec("leaf-1"));
     let mid = store.add(&spec("mid-1").input(&leaf, &["out"]));
     let top = store.add(&spec("top").input(&mid, &["out"]));
+    (leaf, mid, top)
+}
+
+#[tokio::test]
+async fn descends_through_every_miss() {
+    let store = FakeStore::new();
+    let (leaf, _, top) = chain(&store);
     let fake = Fake {
         served: vec![store.output(&leaf, "out")],
         ..Fake::default()
@@ -217,6 +223,22 @@ async fn a_local_only_derivation_is_built_unasked_and_its_inputs_decided_as_usua
             .expect("lock")
             .contains(&store.output(&glue, "out"))
     );
+}
+
+#[tokio::test]
+async fn tells_each_level_before_asking_about_it() {
+    let store = FakeStore::new();
+    let (_, _, top) = chain(&store);
+    let heard = std::cell::RefCell::new(Vec::new());
+    walk(store.dir(), &top, &Fake::default(), &|level| {
+        heard.borrow_mut().push(level);
+    })
+    .await;
+    let level = |number, derivations| Level {
+        number,
+        derivations,
+    };
+    assert_eq!(*heard.borrow(), [level(1, 1), level(2, 2), level(3, 3)]);
 }
 
 /// The fixture's cache answers `Query` here, where the walk lives: the

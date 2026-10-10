@@ -1,8 +1,10 @@
-use std::io::{ErrorKind, Write};
+use std::io::{ErrorKind, IsTerminal, Write};
 use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::Parser;
+
+mod terminal;
 
 /// Explain what a Nix build would compile because no binary cache serves it
 #[derive(Parser)]
@@ -35,7 +37,17 @@ async fn main() -> Result<()> {
     if !cli.trusted_keys.is_empty() {
         options = options.with_trusted_keys(cli.trusted_keys);
     }
-    let report = nix_why_build::explain(&options).await?;
+    // Logging at info prints the same phases with their timings, and would
+    // tear the line, so a terminal gets one or the other.
+    let live = std::io::stderr().is_terminal() && !log::log_enabled!(log::Level::Info);
+    if live {
+        options = options.with_progress(|progress| terminal::draw(&progress.to_string()));
+    }
+    let explained = nix_why_build::explain(&options).await;
+    if live {
+        terminal::clear();
+    }
+    let report = explained?;
     let written = if cli.json {
         writeln!(
             std::io::stdout(),

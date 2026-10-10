@@ -132,10 +132,25 @@ impl Graph {
     }
 }
 
+/// Where the walk is, as it is about to ask the caches about a level.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Level {
+    /// Which level, counting from 1 at the top.
+    pub number: usize,
+    /// Derivations read so far, this level included.
+    pub derivations: usize,
+}
+
 /// Walks from `top`, reading `.drv` files from `store_dir`, one batched
 /// query per level. It descends only into derivations that get built: the
-/// cut nix makes on an empty store.
-pub async fn walk<Q: Query>(store_dir: &Path, top: &StorePath, query: &Q) -> Graph {
+/// cut nix makes on an empty store. `on_level` hears of each level just
+/// before its query.
+pub async fn walk<Q: Query>(
+    store_dir: &Path,
+    top: &StorePath,
+    query: &Q,
+    on_level: &impl Fn(Level),
+) -> Graph {
     let mut state = State {
         nodes: HashMap::new(),
         answers: HashMap::new(),
@@ -144,7 +159,9 @@ pub async fn walk<Q: Query>(store_dir: &Path, top: &StorePath, query: &Q) -> Gra
     let mut level: HashMap<StorePath, BTreeSet<String>> =
         HashMap::from([(top.clone(), BTreeSet::new())]);
     let mut first = true;
+    let mut number = 0;
     while !level.is_empty() {
+        number += 1;
         state.read_new(store_dir, &level).await;
         if first {
             state.want_every_output(top);
@@ -152,6 +169,10 @@ pub async fn walk<Q: Query>(store_dir: &Path, top: &StorePath, query: &Q) -> Gra
         }
         let level_paths = state.merge_wanted(level);
         let ask = state.unasked_outputs(&level_paths);
+        on_level(Level {
+            number,
+            derivations: state.nodes.len(),
+        });
         let started = std::time::Instant::now();
         if !ask.is_empty() {
             state.answers.extend(query.query(&ask).await);

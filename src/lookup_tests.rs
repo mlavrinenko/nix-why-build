@@ -159,7 +159,13 @@ async fn classify_app(hello_served: bool) -> super::Reason {
     let substituters =
         crate::cache::Substituters::new(&[url], &[crate::fixture_tests::PUBLIC.to_owned()], true)
             .expect("substituters");
-    let graph = crate::walk::walk(store, &app, &crate::fixture_tests::FakeCache::default()).await;
+    let graph = crate::walk::walk(
+        store,
+        &app,
+        &crate::fixture_tests::FakeCache::default(),
+        &|_| {},
+    )
+    .await;
     let split = crate::roots::split(&graph);
     let labels =
         crate::modules::Labels::parse(&format!(r#"{{"path": "{}"}}"#, nixpkgs.path().display()))

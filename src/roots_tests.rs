@@ -6,7 +6,7 @@ use crate::walk::{Graph, walk};
 use super::{Split, split};
 
 async fn graph_of(store: &FakeStore, top: &StorePath, cache: &FakeCache) -> Graph {
-    walk(store.dir(), top, cache).await
+    walk(store.dir(), top, cache, &|_| {}).await
 }
 
 fn names(graph: &Graph, paths: &[StorePath]) -> Vec<String> {

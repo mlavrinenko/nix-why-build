@@ -95,7 +95,11 @@ $ nix-why-build .#nixosConfigurations.tank \
 
 It's quick. On tank (a desktop, five caches) the whole report takes under
 40 s, 17 of them nix's own evaluation of the system. The option index
-evaluates while the caches are asked. `RUST_LOG=info` prints walk timings.
+evaluates while the caches are asked. On a terminal one line on stderr says
+which phase it is in (`evaluating`, `asking 5 caches: level 7, 3210
+derivations`, `comparing 52 roots with nixpkgs`) and vanishes before the
+report prints. A pipe or a file gets nothing extra. `RUST_LOG=info` logs every
+phase with its time instead.
 
 `--json` prints everything, each cascade with its `chain` down to the root.
 
@@ -134,8 +138,9 @@ async fn main() -> Result<(), nix_why_build::Error> {
 
 The whole surface is `explain`, `Options` (add `with_substituters`,
 `with_trusted_keys` and `with_store_dir` to pin the caches or the store),
-`Report` with its `Root`s, and `Reason`. Everything else stays private and the
-types are `#[non_exhaustive]`, so a new field never breaks your build.
+`Report` with its `Root`s, and `Reason`. `with_progress` takes a callback
+that hears each `Progress` phase, and the library prints nothing itself.
+Everything else stays private and the types are `#[non_exhaustive]`, so a new field never breaks your build.
 
 ## Install
 

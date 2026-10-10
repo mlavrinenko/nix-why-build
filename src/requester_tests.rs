@@ -6,7 +6,7 @@ use crate::walk::{Graph, walk};
 use super::{Parents, requests};
 
 async fn graph_of(store: &FakeStore, top: &StorePath) -> Graph {
-    walk(store.dir(), top, &FakeCache::default()).await
+    walk(store.dir(), top, &FakeCache::default(), &|_| {}).await
 }
 
 /// `(option, glue name, item name)` for each request of `root`.

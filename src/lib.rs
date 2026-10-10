@@ -30,6 +30,7 @@ mod eval;
 mod human;
 mod lookup;
 mod modules;
+mod progress;
 mod reason;
 mod report;
 mod requester;
@@ -44,9 +45,12 @@ mod fixture_tests;
 
 use std::path::PathBuf;
 
+use progress::{Callback, timed};
+
 pub use cache::CacheError;
 pub use diff::Diff;
 pub use eval::EvalError;
+pub use progress::Progress;
 pub use reason::Reason;
 pub use report::{Cascade, Package, Report, Requested, Root, Unknown};
 
@@ -94,6 +98,7 @@ pub struct Options {
     pub trusted_keys: Option<Vec<String>>,
     /// Where `.drv` files live.
     pub store_dir: PathBuf,
+    progress: Option<Callback>,
 }
 
 impl Options {
@@ -105,6 +110,7 @@ impl Options {
             substituters: None,
             trusted_keys: None,
             store_dir: PathBuf::from("/nix/store"),
+            progress: None,
         }
     }
 
@@ -127,6 +133,29 @@ impl Options {
     pub fn with_store_dir(mut self, dir: impl Into<PathBuf>) -> Self {
         self.store_dir = dir.into();
         self
+    }
+
+    /// Tells `report` each phase as it starts: nix evaluating, the walk
+    /// asking the caches level by level, the roots being compared. The
+    /// library prints nothing itself, so a caller draws the phases its own
+    /// way. The callback runs on whichever thread is working, so keep it
+    /// short.
+    ///
+    /// ```
+    /// let options = nix_why_build::Options::new(".#nixosConfigurations.tank")
+    ///     .with_progress(|progress| eprintln!("{progress}"));
+    /// ```
+    #[must_use]
+    pub fn with_progress(mut self, report: impl Fn(Progress) + Send + Sync + 'static) -> Self {
+        self.progress = Some(Callback::new(report));
+        self
+    }
+
+    /// Tells the callback, if any, that `progress` has started.
+    fn notify(&self, progress: Progress) {
+        if let Some(callback) = &self.progress {
+            callback.call(progress);
+        }
     }
 }
 
@@ -152,6 +181,48 @@ pub enum Error {
 /// [`Error::Eval`] when nix fails, [`Error::Config`] when its configuration
 /// does not parse, [`Error::Cache`] for a malformed trusted key.
 pub async fn explain(options: &Options) -> Result<Report, Error> {
+    let substituters = substituters(options).await?;
+    let gathered = gather(options, &substituters).await;
+    let graph = gathered.graph?;
+    let split = roots::split(&graph);
+    let mut report = Report::new(&graph, &split, &substituters);
+    let flake = match &gathered.labels {
+        Some(Ok(labels)) => lookup::Inputs::Listed(labels),
+        Some(Err(reason)) => {
+            report
+                .warnings
+                .push(format!("flake inputs unknown: {reason}"));
+            lookup::Inputs::Unlisted(reason)
+        }
+        None => lookup::Inputs::NoFlake,
+    };
+    options.notify(Progress::Comparing {
+        roots: split.roots.len(),
+    });
+    let (reasons, warnings) = timed(
+        "comparing roots with nixpkgs",
+        lookup::classify_roots(&options.store_dir, &graph, &split, flake, &substituters),
+    )
+    .await;
+    // Only now: the walk and the root lookup both ask the substituters.
+    report.warnings.extend(substituters.warnings());
+    report.warnings.extend(warnings);
+    report.set_reasons(&reasons);
+    match gathered.index {
+        Some(Ok(index)) => report.locate(
+            &index,
+            &gathered.labels.and_then(Result::ok).unwrap_or_default(),
+        ),
+        Some(Err(reason)) => report
+            .warnings
+            .push(format!("module files unknown: {reason}")),
+        None => {}
+    }
+    Ok(report)
+}
+
+/// The substituters to ask: the options', else nix's own configuration.
+async fn substituters(options: &Options) -> Result<cache::Substituters, Error> {
     let nix_config = if options.substituters.is_some() && options.trusted_keys.is_some() {
         config::NixConfig {
             require_sigs: true,
@@ -168,50 +239,57 @@ pub async fn explain(options: &Options) -> Result<Report, Error> {
         .trusted_keys
         .clone()
         .unwrap_or(nix_config.trusted_keys);
-    let substituters = cache::Substituters::new(&urls, &keys, nix_config.require_sigs)?;
+    Ok(cache::Substituters::new(
+        &urls,
+        &keys,
+        nix_config.require_sigs,
+    )?)
+}
+
+/// What the three side-by-side nix jobs found. `index` and `labels` are
+/// `None` when the installable has no configuration or flake to ask about.
+struct Gathered {
+    graph: Result<walk::Graph, Error>,
+    index: Option<Result<modules::Index, String>>,
+    labels: Option<Result<modules::Labels, String>>,
+}
+
+/// Walks the installable while nix indexes its options and lists its flake's
+/// inputs. Only the walk reports progress: it is the one in the way.
+async fn gather(options: &Options, substituters: &cache::Substituters) -> Gathered {
     let config_attr = eval::config_attr(&options.installable);
     let walked = async {
-        let top = eval::drv_path(&options.installable).await?;
-        Ok::<_, Error>(walk::walk(&options.store_dir, &top, &substituters).await)
+        options.notify(Progress::Evaluating {
+            installable: options.installable.clone(),
+        });
+        let top = timed("evaluating", eval::drv_path(&options.installable)).await?;
+        let caches = substituters.urls().len();
+        let on_level = |level: walk::Level| {
+            options.notify(Progress::Walking {
+                level: level.number,
+                derivations: level.derivations,
+                caches,
+            });
+        };
+        let walk = walk::walk(&options.store_dir, &top, substituters, &on_level);
+        Ok::<_, Error>(timed("walking", walk).await)
     };
     let indexed = async {
         match &config_attr {
-            Some(attr) => Some(modules::load(attr).await),
+            Some(attr) => Some(timed("indexing options", modules::load(attr)).await),
             None => None,
         }
     };
     let labelled = async {
         match eval::flake_ref(&options.installable) {
-            Some(flake) => Some(modules::labels(flake).await),
+            Some(flake) => Some(timed("listing flake inputs", modules::labels(flake)).await),
             None => None,
         }
     };
     let (graph, index, labels) = tokio::join!(walked, indexed, labelled);
-    let graph = graph?;
-    let split = roots::split(&graph);
-    let mut report = Report::new(&graph, &split, &substituters);
-    let flake = match &labels {
-        Some(Ok(labels)) => lookup::Inputs::Listed(labels),
-        Some(Err(reason)) => {
-            report
-                .warnings
-                .push(format!("flake inputs unknown: {reason}"));
-            lookup::Inputs::Unlisted(reason)
-        }
-        None => lookup::Inputs::NoFlake,
-    };
-    let (reasons, warnings) =
-        lookup::classify_roots(&options.store_dir, &graph, &split, flake, &substituters).await;
-    // Only now: the walk and the root lookup both ask the substituters.
-    report.warnings.extend(substituters.warnings());
-    report.warnings.extend(warnings);
-    report.set_reasons(&reasons);
-    match index {
-        Some(Ok(index)) => report.locate(&index, &labels.and_then(Result::ok).unwrap_or_default()),
-        Some(Err(reason)) => report
-            .warnings
-            .push(format!("module files unknown: {reason}")),
-        None => {}
+    Gathered {
+        graph,
+        index,
+        labels,
     }
-    Ok(report)
 }
