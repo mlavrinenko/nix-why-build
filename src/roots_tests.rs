@@ -145,3 +145,29 @@ async fn a_served_top_has_no_roots() {
     assert!(split.roots.is_empty());
     assert!(split.cascades.is_empty());
 }
+
+#[tokio::test]
+async fn a_local_only_build_is_a_root_and_makes_no_parent_a_cascade() {
+    let store = FakeStore::new();
+    let lib = store.add(&spec("lib-1.0"));
+    let wrapper = store.add(
+        &spec("node-wrapper")
+            .env("allowSubstitutes", "")
+            .input(&lib, &["out"]),
+    );
+    let app = store.add(&spec("app-1.0").input(&wrapper, &["out"]));
+    let top = store.add(&spec("system").input(&app, &["out"]));
+    let graph = graph_of(&store, &top, &FakeCache::default()).await;
+    let split = split(&graph);
+    assert_eq!(
+        names(&graph, &split.roots),
+        ["app-1.0", "lib-1.0", "node-wrapper"]
+    );
+    assert_eq!(
+        chains(&graph, &split, &top),
+        [(
+            "app-1.0".to_owned(),
+            vec!["system".to_owned(), "app-1.0".to_owned()]
+        )]
+    );
+}

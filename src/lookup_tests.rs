@@ -49,6 +49,12 @@ fn a_root_is_looked_up_by_pname_in_the_sets_its_platform_and_cuda_call_for() {
 fn fetches_and_glue_are_not_looked_up_and_keys_are_distinct() {
     let store = FakeStore::new();
     let fetch = drv(&store, &spec("src.tar.gz").fixed().env("pname", "src"));
+    let local = drv(
+        &store,
+        &spec("node-24")
+            .env("pname", "node")
+            .env("allowSubstitutes", ""),
+    );
     let glue = drv(&store, &spec("etc"));
     let hello = drv(&store, &spec("hello-2.12").env("pname", "hello"));
     let again = drv(
@@ -57,6 +63,7 @@ fn fetches_and_glue_are_not_looked_up_and_keys_are_distinct() {
     );
     assert!(key_of(&fetch, "x86_64-linux").is_err());
     assert!(key_of(&glue, "x86_64-linux").is_err());
+    assert!(key_of(&local, "x86_64-linux").is_err());
     assert_eq!(
         distinct_keys(&[&fetch, &glue, &hello, &again], "x86_64-linux"),
         [("hello".to_owned(), sets(&[""]))]

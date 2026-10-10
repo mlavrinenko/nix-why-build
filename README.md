@@ -17,28 +17,33 @@ that too. Same answer on your laptop and on a fresh box.
 
 ```console
 $ nix-why-build .#nixosConfigurations.tank
+eglexternalplatform-1.2.1
+  why unknown: nixpkgs#pkgsi686Linux.eglexternalplatform builds exactly this, yet no cache has it; Hydra may have failed it
+  wanted by environment.systemPackages (nixpkgs:nixos/modules/programs/steam.nix), systemd.services.systemd-tmpfiles-resetup (nixpkgs:nixos/modules/system/boot/systemd/tmpfiles.nix) (+1 more)
+  drags in egl-gbm-1.1.3, egl-wayland-1.1.21, egl-wayland2-1.0.1, egl-x11-1.0.5
+...
 246 fetches: acorn-8.18.0.tgz, aix-ppc64-0.27.7.tgz, aix-ppc64-0.28.2.tgz (+243 more)
   why fetch (246)
   wanted by home-manager.users.tank.xdg.configFile."opencode/plugins/octrimmer.js" (apps/agents/opencode/plugins/octrimmer/octrimmer.nix)
   drags in octrimmer-0.1.1-sources, octrimmer-0.1.1
-russian-trusted-ca-constrained.crt
-  why unknown: it has no pname to look up in nixpkgs
-  wanted by home-manager.users.tank.home.packages (home-manager:modules/programs/firefox), home-manager.users.tank.home.file.".mozilla/firefox/974ct1mu.default/search.json.mozlz4" (home-manager:modules/programs/firefox) (+1 more)
-  drags in firefox-156.0.1
 ...
+krita-6.0.2.1
+  why local-only: allowSubstitutes = false: nix builds it even when a cache has it
+  wanted by home-manager.users.tank.home.packages (apps/krita.nix)
 llama-cpp-0.5.0
   why overridden: vs unstable#pkgsCuda.llama-cpp (cached): postPatch added; buildInputs, cmakeFlags changed; input blas-3 added
   wanted by environment.systemPackages (apps/llama-cpp-16gb.nix), systemd.services.llama-cpp-embed (apps/llama-cpp-16gb.nix, base:apps/gpu-exclusive.nix) (+1 more)
-nh-4.4.2
-  why not-built-by-hydra: nixpkgs#nh has meta.hydraPlatforms = [ ]
-  wanted by environment.systemPackages (nixpkgs:nixos/modules/programs/nh.nix), systemd.services.nh-clean (nixpkgs:nixos/modules/programs/nh.nix)
-514 roots in 29 groups, 45 packages to build, 1424 more without a pname
+...
+523 roots in 39 groups, 52 packages to build, 1621 more without a pname
 ```
 
 A **root** is something no cache serves even though everything it needs is
 served. That's where the miss starts. Fix the root and everything it
 **drags in** comes from the cache again. Roots that drag in the same packages
 print as one group, so a custom package's 223 vendored crates are one line.
+A local-only derivation (`allowSubstitutes = false`) is always a root of its
+own, since nix builds it whatever the cache holds and nothing above it misses
+because of it.
 Config glue (units, `etc`, `system-path`) is cheap, so it's counted, not
 listed.
 

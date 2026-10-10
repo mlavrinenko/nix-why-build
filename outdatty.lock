@@ -17,8 +17,8 @@ groups:
       src/human.rs: 63b50a0c20abc33209d933f406a218006c71a592ba2045ec52a3cf1592088188
       src/index.nix: 84f328d1382adb201c2df743fea30f06bc6f8771a4686bba3bf50752fb958c3e
       src/lib.rs: 05313841dec38b1ef8b333cf847cd202d03a413bd3ce3a2f0521208893c23d3a
-      src/lookup.rs: ade0dd9963e5e14f41d4e397c9cde0287907403d33edb923537a2270c7b0c577
-      src/lookup_tests.rs: b6ca91b7bafb33dd154e11c15fc1c17be831f84713724e170b59ea68ef5db793
+      src/lookup.rs: 75ad81b2045f9fc4b3638cb7e1cdd7e9c873a933774503a9615ca65b8ff10979
+      src/lookup_tests.rs: f09c5983e0dfa5752f31b91c1641399687e9b53ca065625ce17c1abbd1fdff7b
       src/main.rs: 1c3d120449953bfd93edfa8424e2962928cdca5f8dcc60390f8ce264dfd0ef72
       src/modules.rs: 997b732a6f8045833d63c1ee49a74956fde63285b28c7fb8961a2b723e74f430
       src/modules_tests.rs: 2d5db92667cab9ad2a0936a1523532daf42ca7dc7fe9eb7e28dfd7eb4e5bceca
@@ -28,12 +28,12 @@ groups:
       src/report_tests.rs: 1c76a549fc6fc6ab540c88b782135d1edc7fd07066d5028d676011c2930f874a
       src/requester.rs: 97d0879ff73eab709ecfc3312c9ef564aa146294d32758bed29184a22b90da04
       src/requester_tests.rs: 4ce862bcee59ed29955aa10ffae6e6eab93d3ddb759838eaa54f2780057d26fa
-      src/roots.rs: 0c248741f05021dd73b84902f918364910a2636d6a2b9bed5f9a635630c31678
-      src/roots_tests.rs: 7545f5404633de720a599bb318d6eda54c57d6b185b5e74d25ac7ca2f6d0aba1
-      src/walk.rs: 383b8a7721c50f075375b98cae33a43d8c7b17f5978d131b2f996caa38afae4b
+      src/roots.rs: 68c87cf96f4d206f1f8ba2e7437c095ee5284ddb5ab68f26afa6da503a535619
+      src/roots_tests.rs: d96643ff249728fc750069ee2b7b03ba99449ec29a5fd11fbd406e99a376b1d1
+      src/walk.rs: 61741688e4d4a1d2e8e3961cd575bf97651d561bab51f9b8c819281dec0d8d00
       src/walk_tests.rs: 5d31c6850c225f9ef859b112f6620456fe09d1acb792aeb820d3723241ba1a4c
     dependents:
-      README.md: 5536830f063fad3bc96051122e48efb351146216b5b9623f98bea4bf15cc989a
+      README.md: 0cf11c0c17c7568667c5c8e6327f88e239cf8dfa1830901794034976c4176025
       www/index.html: 3080a6ff1ece1ebc43db5b4b0d58c6ef50668f2b418633a38cc615d62580443c
   dev-docs:
     source:
@@ -48,4 +48,4 @@ groups:
     source:
       Cargo.toml: ed6c13a236c92abac8f9395e0f7c9204d22a9e449e9f706b7a3381d0c9950a60
     dependents:
-      CHANGELOG.md: d217d49f4bb73004cd8d92057f085b168314f37adce5d4bea94f2453a2b34951
+      CHANGELOG.md: a423598bb164ba3567d88607c652ecd9b1127eec584f852fcd0c48ded049e75e

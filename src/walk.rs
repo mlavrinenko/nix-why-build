@@ -80,6 +80,13 @@ impl Graph {
             .unwrap_or_default()
     }
 
+    /// Whether nix builds `path` without asking a cache, as it does any
+    /// derivation with `allowSubstitutes = false`.
+    #[must_use]
+    pub fn local_only(&self, path: &StorePath) -> bool {
+        local_only(&self.nodes, path)
+    }
+
     /// The derivation's name, or the `.drv` file's when it was not read.
     #[must_use]
     pub fn name<'a>(&'a self, path: &'a StorePath) -> &'a str {

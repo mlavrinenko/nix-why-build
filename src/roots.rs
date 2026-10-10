@@ -1,7 +1,8 @@
 //! Split what gets built into roots and the cascades they cause.
 //!
-//! A root gets built while every input it uses is served: the miss starts
-//! there. A cascade gets built only because some input of it does.
+//! A root gets built while every input it uses is served, or because it is
+//! local-only: the miss starts there. A cascade gets built only because some
+//! input of it misses.
 
 use std::collections::{HashMap, VecDeque};
 
@@ -33,7 +34,7 @@ pub fn split(graph: &Graph) -> Split {
     let mut roots = Vec::new();
     let mut cascades = HashMap::new();
     for path in graph.builds() {
-        if graph.build_inputs(path).is_empty() {
+        if miss_inputs(graph, path).is_empty() {
             roots.push(path.clone());
         } else {
             cascades.insert(path.clone(), chains_from(graph, path));
@@ -41,6 +42,20 @@ pub fn split(graph: &Graph) -> Split {
     }
     roots.sort_by(|left, right| by_name(graph, left, right));
     Split { roots, cascades }
+}
+
+/// The build inputs that make `path` a cascade. A local-only build is built
+/// for its own sake: it is a root whatever its inputs, and makes no parent a
+/// cascade, since Hydra builds and caches it like anything else.
+fn miss_inputs<'a>(graph: &'a Graph, path: &StorePath) -> Vec<&'a StorePath> {
+    if graph.local_only(path) {
+        return Vec::new();
+    }
+    graph
+        .build_inputs(path)
+        .into_iter()
+        .filter(|input| !graph.local_only(input))
+        .collect()
 }
 
 fn by_name(graph: &Graph, left: &StorePath, right: &StorePath) -> std::cmp::Ordering {
@@ -57,7 +72,7 @@ fn chains_from(graph: &Graph, start: &StorePath) -> Vec<Chain> {
     let mut queue = VecDeque::from([start]);
     let mut chains = Vec::new();
     while let Some(node) = queue.pop_front() {
-        let inputs = graph.build_inputs(node);
+        let inputs = miss_inputs(graph, node);
         if inputs.is_empty() {
             chains.push(Chain {
                 root: node.clone(),

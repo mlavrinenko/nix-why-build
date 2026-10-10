@@ -119,8 +119,8 @@ fn key_of(root: &Drv, system: &str) -> Result<Key, String> {
     let pname = root
         .pname
         .clone()
-        .filter(|_| !root.fixed_output)
-        .ok_or_else(|| "it is a fetch or has no pname".to_owned())?;
+        .filter(|_| !root.fixed_output && !root.local_only)
+        .ok_or_else(|| "it is a fetch, local-only or has no pname".to_owned())?;
     let base = if root.system == system {
         ""
     } else if root.system == "i686-linux" && system == "x86_64-linux" {
