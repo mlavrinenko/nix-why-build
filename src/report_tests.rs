@@ -37,6 +37,7 @@ fn report(roots: Vec<Root>, to_build: Vec<Package>, unknown: Vec<Unknown>) -> Re
         roots,
         to_build,
         unknown,
+        warnings: vec![],
     }
 }
 
@@ -199,8 +200,10 @@ fn wanted(root: Root, options: &[&str]) -> Root {
             .map(|option| super::Requested {
                 option: (*option).to_owned(),
                 via: "glue".to_owned(),
+                via_drv: "/nix/store/x-glue.drv".to_owned(),
                 item: "item".to_owned(),
                 item_drv: "/nix/store/x-item.drv".to_owned(),
+                files: vec![],
             })
             .collect(),
         ..root
@@ -208,7 +211,7 @@ fn wanted(root: Root, options: &[&str]) -> Root {
 }
 
 #[test]
-fn a_group_says_once_which_options_want_it_and_caps_them_at_three() {
+fn a_group_says_once_which_options_want_it_and_caps_them_at_two() {
     let owner = || vec![cascade("kache-1.0.0", Some("kache"))];
     let report = report(
         vec![
@@ -230,7 +233,7 @@ fn a_group_says_once_which_options_want_it_and_caps_them_at_three() {
     );
     assert_eq!(
         report.human(),
-        "2 roots: a-1, b-1\n  wanted by environment.systemPackages, home.packages, systemd.services.a (+1 more)\n  drags in kache-1.0.0\n"
+        "2 roots: a-1, b-1\n  wanted by environment.systemPackages, home.packages (+2 more)\n  drags in kache-1.0.0\n"
     );
 }
 
@@ -253,5 +256,54 @@ fn toplevel_alone_is_not_worth_a_line_but_beside_an_option_it_is() {
     assert_eq!(
         report.human(),
         "glibc-locales-2.42\nnh-4.4.2\n  wanted by environment.systemPackages, toplevel\n"
+    );
+}
+
+#[test]
+fn wanted_by_names_up_to_two_files_per_option() {
+    let mut root = wanted(
+        root("llama-cpp-0.5.0", Some("llama-cpp"), false, vec![]),
+        &["environment.systemPackages", "systemd.services.llama"],
+    );
+    if let [packages, unit] = root.requested_by.as_mut_slice() {
+        packages.files = vec!["apps/llama.nix".to_owned()];
+        unit.files = vec![
+            "apps/llama.nix".to_owned(),
+            "base:apps/gpu.nix".to_owned(),
+            "nixpkgs:x.nix".to_owned(),
+        ];
+    }
+    let report = report(vec![root], vec![], vec![]);
+    assert_eq!(
+        report.human(),
+        "llama-cpp-0.5.0\n  wanted by environment.systemPackages (apps/llama.nix), systemd.services.llama (apps/llama.nix, base:apps/gpu.nix +1)\n"
+    );
+}
+
+#[test]
+fn warnings_print_before_the_tally() {
+    let mut report = report(vec![], vec![], vec![]);
+    report
+        .warnings
+        .push("module files unknown: error: boom".to_owned());
+    assert_eq!(
+        report.summary(),
+        "warning: module files unknown: error: boom\n0 roots, 0 packages to build, 0 more without a pname\n"
+    );
+}
+
+#[test]
+fn package_lists_come_first_then_units_then_files() {
+    let root = wanted(
+        root("kache-1.0.0", Some("kache"), false, vec![]),
+        &[
+            "environment.etc.profile",
+            "systemd.user.services.kache",
+            "home-manager.users.tank.home.packages",
+        ],
+    );
+    assert_eq!(
+        report(vec![root], vec![], vec![]).human(),
+        "kache-1.0.0\n  wanted by home-manager.users.tank.home.packages, systemd.user.services.kache (+1 more)\n"
     );
 }

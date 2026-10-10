@@ -20,6 +20,27 @@ pub fn toplevel_attr(installable: &str) -> String {
     format!("{flake}#{attr}{suffix}")
 }
 
+/// The configuration an installable names, when it names one
+/// (`.#nixosConfigurations.tank`): its options can be indexed.
+#[must_use]
+pub fn config_attr(installable: &str) -> Option<String> {
+    let (_, attr) = installable.split_once('#')?;
+    let parts: Vec<&str> = attr.split('.').collect();
+    match parts.as_slice() {
+        [
+            "nixosConfigurations" | "homeConfigurations" | "darwinConfigurations",
+            _,
+        ] => Some(installable.to_owned()),
+        _ => None,
+    }
+}
+
+/// The flake reference of a flake installable: what comes before `#`.
+#[must_use]
+pub fn flake_ref(installable: &str) -> Option<&str> {
+    installable.split_once('#').map(|(flake, _)| flake)
+}
+
 /// A `.drv` path given directly, rather than an installable to evaluate.
 #[must_use]
 pub fn as_drv_path(installable: &str) -> Option<StorePath> {
@@ -122,6 +143,34 @@ mod tests {
         for (input, expected) in cases {
             assert_eq!(toplevel_attr(input), expected, "{input}");
         }
+    }
+
+    #[test]
+    fn configurations_have_options_and_flakes_have_refs() {
+        assert_eq!(
+            super::config_attr(".#nixosConfigurations.tank").as_deref(),
+            Some(".#nixosConfigurations.tank")
+        );
+        assert_eq!(
+            super::config_attr("github:o/r#homeConfigurations.me").as_deref(),
+            Some("github:o/r#homeConfigurations.me")
+        );
+        assert_eq!(
+            super::config_attr(".#darwinConfigurations.mac").as_deref(),
+            Some(".#darwinConfigurations.mac")
+        );
+        assert_eq!(
+            super::config_attr(".#nixosConfigurations.tank.config.system.build.vm"),
+            None
+        );
+        assert_eq!(super::config_attr("nixpkgs#hello"), None);
+        assert_eq!(super::config_attr("/nix/store/x.drv"), None);
+        assert_eq!(
+            super::flake_ref("github:o/r#homeConfigurations.me"),
+            Some("github:o/r")
+        );
+        assert_eq!(super::flake_ref(".#x"), Some("."));
+        assert_eq!(super::flake_ref("/nix/store/x.drv"), None);
     }
 
     #[test]

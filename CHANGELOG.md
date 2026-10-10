@@ -31,3 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the first glue node on every way to the toplevel names one, like
   `environment.systemPackages` for `system-path` or `systemd.services.<n>`
   for `unit-<n>.service`.
+- `wanted by` names the module files that set each option, from one more
+  `nix eval` of the configuration that runs while the caches are asked:
+  `apps/llama-cpp-16gb.nix` for the configuration's own, `<input>:path` for a
+  flake input's. home-manager options resolve per user, units by their real
+  name, `environment.etc` and `home.file` by the entry whose source it is.

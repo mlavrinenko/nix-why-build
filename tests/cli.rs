@@ -17,6 +17,7 @@ struct World {
     store: FakeStore,
     cache: tempfile::TempDir,
     top: StorePath,
+    app: StorePath,
 }
 
 fn world() -> World {
@@ -41,7 +42,12 @@ fn world() -> World {
     let cache = tempfile::tempdir().expect("tempdir");
     let lib_out = store.output(&lib, "out");
     file_cache(cache.path(), &[(&lib_out, narinfo(&lib_out, Some(SECRET)))]);
-    World { store, cache, top }
+    World {
+        store,
+        cache,
+        top,
+        app,
+    }
 }
 
 /// What `world()` prints: the fetch root first, since it drags a package in.
@@ -60,9 +66,11 @@ fn cache_url(world: &World) -> String {
 
 /// A `nix` on `PATH` that answers `config show --json` and `eval`, logging
 /// its arguments to `args.log`.
-fn fake_nix(dir: &Path, drv: &str, config: &str) -> String {
+/// `--apply` evaluations (the option index) print `index`, `flake archive`
+/// prints a flake whose source is `/nix/store/s-source`.
+fn fake_nix(dir: &Path, drv: &str, config: &str, index: &str) -> String {
     let script = format!(
-        "#!/bin/sh\necho \"$@\" >> {log}\ncase \"$1\" in\n  config) printf '%s' '{config}' ;;\n  eval) printf '%s' '{drv}' ;;\nesac\n",
+        "#!/bin/sh\necho \"$@\" >> {log}\ncase \"$1\" in\n  config) printf '%s' '{config}' ;;\n  flake) printf '%s' '{{\"path\":\"/nix/store/s-source\"}}' ;;\n  eval) case \"$*\" in\n    *--apply*) printf '%s' '{index}' ;;\n    *) printf '%s' '{drv}' ;;\n  esac ;;\nesac\n",
         log = dir.join("args.log").display(),
     );
     install_nix(dir, &script)
@@ -137,7 +145,7 @@ fn prints_the_report_as_json() {
     assert_eq!(at(&report, "/roots/1/name"), "app-1.0");
     assert_eq!(
         at(&report, "/roots/1/requested_by"),
-        serde_json::json!([{"option": "environment.systemPackages", "via": "system-path", "item": "app-1.0", "item_drv": at(&report, "/roots/1/drv")}])
+        serde_json::json!([{"option": "environment.systemPackages", "via": "system-path", "via_drv": at(&report, "/roots/1/requested_by/0/via_drv"), "item": "app-1.0", "item_drv": at(&report, "/roots/1/drv"), "files": []}])
     );
     assert_eq!(at(&report, "/roots/2/name"), "unit-x.service");
     assert_eq!(at(&report, "/unknown"), serde_json::json!([]));
@@ -151,13 +159,21 @@ fn evaluates_a_nixos_configuration_and_reads_nix_config() {
         r#"{{"substituters":{{"value":["{}"]}},"trusted-public-keys":{{"value":["{PUBLIC}"]}},"require-sigs":{{"value":true}}}}"#,
         cache_url(&world)
     );
-    let path = fake_nix(bin.path(), &world.top.to_absolute_path(), &config);
+    let index = format!(
+        r#"{{"scopes":[{{"prefix":"","glue":[],"lists":{{"environment.systemPackages":[{{"file":"/nix/store/s-source/apps/app.nix","drvs":["{}"]}}]}},"attrs":{{}},"sources":{{}}}}]}}"#,
+        world.app.to_absolute_path()
+    );
+    let path = fake_nix(bin.path(), &world.top.to_absolute_path(), &config, &index);
     cmd(&world)
         .env("PATH", path)
         .arg(".#nixosConfigurations.box")
         .assert()
         .success()
-        .stdout(GROUPED);
+        .stdout(GROUPED.replace(
+            "environment.systemPackages",
+            "environment.systemPackages (apps/app.nix)",
+        ))
+        .stderr("2 roots, 2 packages to build, 4 more without a pname\n");
     let log = std::fs::read_to_string(bin.path().join("args.log")).expect("log");
     assert!(log.contains("config show --json"), "{log}");
     assert!(
@@ -203,7 +219,7 @@ fn a_substituter_flag_alone_still_takes_keys_from_nix() {
     let world = world();
     let bin = tempfile::tempdir().expect("tempdir");
     let config = format!(r#"{{"trusted-public-keys":{{"value":["{PUBLIC}"]}}}}"#);
-    let path = fake_nix(bin.path(), "unused", &config);
+    let path = fake_nix(bin.path(), "unused", &config, "{}");
     cmd(&world)
         .env("PATH", path)
         .arg(world.top.to_absolute_path())
@@ -230,4 +246,52 @@ fn flags_alone_still_require_signatures() {
         .assert()
         .success()
         .stdout("lib-1.0\n");
+}
+
+#[test]
+fn a_plain_installable_skips_the_option_index() {
+    let world = world();
+    let bin = tempfile::tempdir().expect("tempdir");
+    let path = fake_nix(bin.path(), &world.top.to_absolute_path(), "{}", "{}");
+    cmd(&world)
+        .env("PATH", path)
+        .args([
+            ".#packages.x86_64-linux.default",
+            "--substituter",
+            &cache_url(&world),
+            "--trusted-key",
+            PUBLIC,
+        ])
+        .assert()
+        .success()
+        .stdout(GROUPED);
+    let log = std::fs::read_to_string(bin.path().join("args.log")).expect("log");
+    assert!(!log.contains("--apply"), "{log}");
+    assert!(!log.contains("flake archive"), "{log}");
+}
+
+#[test]
+fn a_failing_option_index_is_a_warning_not_a_failure() {
+    let world = world();
+    let bin = tempfile::tempdir().expect("tempdir");
+    let script = format!(
+        "#!/bin/sh\ncase \"$*\" in\n  *--apply*) printf 'evaluating...\\nerror: infinite recursion encountered\\n  at x.nix\\n' >&2; exit 1 ;;\n  eval*) printf '%s' '{}' ;;\n  flake*) printf '%s' '{{\"path\":\"/s\"}}' ;;\nesac\n",
+        world.top.to_absolute_path()
+    );
+    let path = install_nix(bin.path(), &script);
+    cmd(&world)
+        .env("PATH", path)
+        .args([
+            ".#nixosConfigurations.box",
+            "--substituter",
+            &cache_url(&world),
+            "--trusted-key",
+            PUBLIC,
+        ])
+        .assert()
+        .success()
+        .stdout(GROUPED)
+        .stderr(predicate::str::starts_with(
+            "warning: module files unknown: error: infinite recursion encountered\n",
+        ));
 }

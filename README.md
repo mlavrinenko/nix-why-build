@@ -17,19 +17,21 @@ and on a fresh box.
 ```console
 $ nix-why-build .#nixosConfigurations.tank
 13 fetches: andale32.exe, arial32.exe, arialb32.exe (+10 more)
+  wanted by environment.systemPackages (nixpkgs:nixos/modules/programs/steam.nix), environment.etc."lightdm/lightdm.conf" (nixpkgs:nixos/modules/services/x11/display-managers/lightdm.nix) (+1 more)
   drags in corefonts-1, steam-1.0.0.85, steam-run-1.0.0.85
-cargo-1.99.0-x86_64-unknown-linux-gnu.tar.xz (fetch)
-  drags in cargo-1.99.0-x86_64-unknown-linux-gnu, rust-minimal-1.99.0, kache-1.0.0
 246 fetches: acorn-8.18.0.tgz, aix-ppc64-0.27.7.tgz, aix-ppc64-0.28.2.tgz (+243 more)
+  wanted by home-manager.users.tank.xdg.configFile."opencode/plugins/octrimmer.js" (apps/agents/opencode/plugins/octrimmer/octrimmer.nix)
   drags in octrimmer-0.1.1-sources, octrimmer-0.1.1
 223 roots: arraydeque-0.5.1, arrayvec-0.7.8, assert_cmd-2.2.2 (+220 more)
+  wanted by environment.systemPackages (kache:packaging/nix/module.nix), systemd.user.services.kache (kache:packaging/nix/module.nix) (+4 more)
   drags in kache-1.0.0
 russian-trusted-ca-constrained.crt
+  wanted by home-manager.users.tank.home.packages (home-manager:modules/programs/firefox), home-manager.users.tank.home.file.".mozilla/firefox/974ct1mu.default/search.json.mozlz4" (home-manager:modules/programs/firefox) (+1 more)
   drags in firefox-156.0.1
 ...
 llama-cpp-0.5.0
-nh-4.4.2
-thunderbird-156.0
+  wanted by environment.systemPackages (apps/llama-cpp-16gb.nix), systemd.services.llama-cpp-embed (apps/llama-cpp-16gb.nix, base:apps/gpu-exclusive.nix) (+1 more)
+...
 514 roots in 29 groups, 45 packages to build, 1424 more without a pname
 ```
 
@@ -38,6 +40,13 @@ everything it needs is served. That's where the miss starts. Everything it
 **drags in** only builds because of it. Fix the root, and the rest comes from
 the cache again. Above, a custom CA cert is why Firefox compiles, and kache's
 223 vendored crates are one line, not 223.
+
+`wanted by` names the options that pull a root in, with the module files that
+set them. Your own show as `apps/llama-cpp-16gb.nix`, a flake input's as
+`home-manager:modules/...`. That takes one more `nix eval` of the
+configuration, run while the caches are asked. When a module only mentions a
+package (an `environment.etc` file, a profile script), that's what you get.
+It says where the reference is, not why someone wrote it.
 
 Roots that drag in the same packages print as one group. Config glue (units,
 `etc`, `system-path`, wrapper scripts) is cheap to build, so it's counted,
@@ -65,16 +74,17 @@ $ nix-why-build .#nixosConfigurations.tank \
 A narinfo only counts when a trusted key signed it, just like nix itself
 (unless `require-sigs = false`).
 
-It's quick. On tank (a desktop with five caches) the walk takes about 10 s
-on top of nix's own 17 s evaluation. It asks the first cache alone, since it
-serves most paths, then the rest at once, and resends a request that stalls.
+It's quick. On tank (a desktop with five caches) the whole report takes about
+30 s, 17 of them nix's own evaluation of the system. The walk asks the first
+cache alone, since it serves most paths, then the rest at once, and resends a
+request that stalls.
 `RUST_LOG=info` prints the per-level timings.
 
 Want it machine readable? Pass `--json`. Here it is trimmed to one root.
 
 ```json
 {
-  "toplevel": "/nix/store/rcfn...-nixos-system-tank-26.05.20260927.cf5e765.drv",
+  "toplevel": "/nix/store/rlnr...-nixos-system-tank-26.05.20260927.cf5e765.drv",
   "substituters": [
     "https://cache.nixos.org/",
     "https://devenv.cachix.org"
@@ -97,6 +107,18 @@ Want it machine readable? Pass `--json`. Here it is trimmed to one root.
             "russian-trusted-ca-constrained.crt"
           ]
         }
+      ],
+      "requested_by": [
+        {
+          "option": "home-manager.users.tank.home.file.\".mozilla/native-messaging-hosts\"",
+          "via": "home-manager-files",
+          "via_drv": "/nix/store/r0yc...-home-manager-files.drv",
+          "item": "mozilla-native-messaging-hosts",
+          "item_drv": "/nix/store/59s9...-mozilla-native-messaging-hosts.drv",
+          "files": [
+            "home-manager:modules/misc/mozilla-messaging-hosts.nix"
+          ]
+        }
       ]
     }
   ],
@@ -108,7 +130,8 @@ Want it machine readable? Pass `--json`. Here it is trimmed to one root.
       "drv": "/nix/store/a4av...-firefox-156.0.1.drv"
     }
   ],
-  "unknown": []
+  "unknown": [],
+  "warnings": []
 }
 ```
 

@@ -100,6 +100,14 @@ fn glue_option(graph: &Graph, parents: &Parents, glue: &StorePath) -> Option<Str
 
 /// `systemd[.user].<kind>s.<unit>` for a `unit-<unit>.<kind>` derivation.
 fn unit_option(name: &str, user: bool) -> Option<String> {
+    let (unit, kind) = unit_parts(name)?;
+    let scope = if user { "systemd.user" } else { "systemd" };
+    Some(format!("{scope}.{kind}.{}", attr_name(unit)))
+}
+
+/// The unit name and the plural option kind (`services`) of a
+/// `unit-<unit>.<kind>` derivation name.
+pub(crate) fn unit_parts(name: &str) -> Option<(&str, &'static str)> {
     let (unit, kind) = name.strip_prefix("unit-")?.rsplit_once('.')?;
     let kind = match kind {
         "service" => "services",
@@ -112,12 +120,11 @@ fn unit_option(name: &str, user: bool) -> Option<String> {
         "target" => "targets",
         _ => return None,
     };
-    let scope = if user { "systemd.user" } else { "systemd" };
-    Some(format!("{scope}.{kind}.{}", attr_name(unit)))
+    Some((unit, kind))
 }
 
 /// `name` as a Nix attribute: bare when it is an identifier, else quoted.
-fn attr_name(name: &str) -> String {
+pub(crate) fn attr_name(name: &str) -> String {
     let bare = name
         .chars()
         .next()

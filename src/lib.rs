@@ -18,6 +18,7 @@ pub mod cache;
 pub mod config;
 pub mod drv;
 pub mod eval;
+pub mod modules;
 pub mod report;
 pub mod requester;
 pub mod roots;
@@ -97,7 +98,32 @@ pub async fn explain(options: &Options) -> Result<Report, Error> {
         .clone()
         .unwrap_or(nix_config.trusted_keys);
     let substituters = cache::Substituters::new(&urls, &keys, nix_config.require_sigs)?;
-    let top = eval::drv_path(&options.installable).await?;
-    let graph = walk::walk(&options.store_dir, &top, &substituters).await;
-    Ok(Report::new(&graph, &roots::split(&graph), &substituters))
+    let config_attr = eval::config_attr(&options.installable);
+    let walked = async {
+        let top = eval::drv_path(&options.installable).await?;
+        Ok::<_, Error>(walk::walk(&options.store_dir, &top, &substituters).await)
+    };
+    let indexed = async {
+        match &config_attr {
+            Some(attr) => Some(modules::load(attr).await),
+            None => None,
+        }
+    };
+    let labelled = async {
+        match eval::flake_ref(&options.installable) {
+            Some(flake) if config_attr.is_some() => modules::labels(flake).await.ok(),
+            _ => None,
+        }
+    };
+    let (graph, index, labels) = tokio::join!(walked, indexed, labelled);
+    let graph = graph?;
+    let mut report = Report::new(&graph, &roots::split(&graph), &substituters);
+    match index {
+        Some(Ok(index)) => report.locate(&index, &labels.unwrap_or_default()),
+        Some(Err(reason)) => report
+            .warnings
+            .push(format!("module files unknown: {reason}")),
+        None => {}
+    }
+    Ok(report)
 }

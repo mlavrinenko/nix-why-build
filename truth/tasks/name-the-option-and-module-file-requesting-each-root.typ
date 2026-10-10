@@ -27,7 +27,7 @@
     ),
   ),
   assignee: "agent",
-  status: wip(2026, 10, 10),
+  status: done(2026, 10, 10),
   links: depends-on("group-misses-by-root-with-cascade-chains.typ"),
 )
 

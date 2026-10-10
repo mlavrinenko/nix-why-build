@@ -4,6 +4,7 @@ use nix_compat::store_path::StorePath;
 use serde::Serialize;
 
 use crate::cache::Substituters;
+use crate::modules::{Index, Labels};
 use crate::requester::{Parents, Request, requests};
 use crate::roots::{Chain, Split};
 use crate::walk::Graph;
@@ -11,8 +12,11 @@ use crate::walk::Graph;
 /// How many cascades a root lists before it says how many more there are.
 const SHOWN_CASCADES: usize = 6;
 
-/// How many options a `wanted by` line names.
-const SHOWN_OPTIONS: usize = 3;
+/// How many options a `wanted by` line names; lines run long with files.
+const SHOWN_OPTIONS: usize = 2;
+
+/// How many module files a `wanted by` entry names.
+const SHOWN_FILES: usize = 2;
 
 /// How many roots a group names before it says how many more there are.
 const SHOWN_GROUP_ROOTS: usize = 3;
@@ -31,6 +35,8 @@ pub struct Report {
     pub to_build: Vec<Package>,
     /// Derivations with no answer.
     pub unknown: Vec<Unknown>,
+    /// What could not be worked out, said once each.
+    pub warnings: Vec<String>,
 }
 
 /// One derivation that gets built.
@@ -73,10 +79,15 @@ pub struct Requested {
     pub option: String,
     /// The glue derivation that option builds.
     pub via: String,
+    /// Its `.drv` path.
+    pub via_drv: String,
     /// What the option lists on the way to the root.
     pub item: String,
     /// That item's `.drv` path.
     pub item_drv: String,
+    /// The module files that set the option, when the configuration could
+    /// be indexed: relative to its flake, or `<input>:path` for an input's.
+    pub files: Vec<String>,
 }
 
 /// A derivation built only because a root below it is.
@@ -136,6 +147,32 @@ impl Report {
                     reason: reason.to_owned(),
                 })
                 .collect(),
+            warnings: Vec::new(),
+        }
+    }
+
+    /// Resolves each request against the configuration's option index: the
+    /// full option name, and the module files that set it, labelled.
+    pub fn locate(&mut self, index: &Index, labels: &Labels) {
+        for request in self
+            .roots
+            .iter_mut()
+            .flat_map(|root| &mut root.requested_by)
+        {
+            let Some(located) = index.locate(
+                &request.option,
+                &request.via,
+                &request.via_drv,
+                &request.item_drv,
+            ) else {
+                continue;
+            };
+            request.option = located.option;
+            request.files = located
+                .files
+                .iter()
+                .map(|file| labels.label(file))
+                .collect();
         }
     }
 
@@ -148,7 +185,9 @@ impl Report {
         for group in self.groups() {
             out.push_str(&group.header());
             out.push('\n');
-            if let Some(line) = listed("wanted by", &group.options(), SHOWN_OPTIONS) {
+            let options = group.options();
+            let options: Vec<&str> = options.iter().map(String::as_str).collect();
+            if let Some(line) = listed("wanted by", &options, SHOWN_OPTIONS) {
                 out.push_str(&line);
             }
             let names: Vec<&str> = group
@@ -199,9 +238,15 @@ impl Report {
         groups
     }
 
-    /// The one-line tally, with the first unknown's reason if any.
+    /// Any warnings, one per line, then the one-line tally with the first
+    /// unknown's reason if any.
     #[must_use]
     pub fn summary(&self) -> String {
+        let warnings: String = self
+            .warnings
+            .iter()
+            .map(|warning| format!("warning: {warning}\n"))
+            .collect();
         let roots = self.shown_roots().count();
         let packages = self.to_build.iter().filter(|p| p.pname.is_some()).count();
         let rest = self.to_build.len() - packages;
@@ -223,7 +268,7 @@ impl Report {
             ));
         }
         line.push('\n');
-        line
+        warnings + &line
     }
 
     fn shown_roots(&self) -> impl Iterator<Item = &Root> {
@@ -245,14 +290,16 @@ pub struct Group<'a> {
 impl Group<'_> {
     /// The options pulling in any of the roots, once each; none when the
     /// toplevel is all there is to say.
-    fn options(&self) -> Vec<&str> {
-        let mut options: Vec<&str> = self
+    fn options(&self) -> Vec<String> {
+        let mut options: Vec<String> = self
             .roots
             .iter()
             .flat_map(|root| &root.requested_by)
-            .map(|request| request.option.as_str())
+            .map(wanted_by)
             .collect();
-        options.sort_unstable();
+        options.sort_unstable_by(|left, right| {
+            rank(left).cmp(&rank(right)).then_with(|| left.cmp(right))
+        });
         options.dedup();
         if options == ["toplevel"] {
             options.clear();
@@ -287,6 +334,34 @@ impl Group<'_> {
             root.name.clone()
         }
     }
+}
+
+/// Package lists first, since they name the package itself; then units; then
+/// files and anything else, which often only mention it.
+fn rank(option: &str) -> u8 {
+    let option = option.split(" (").next().unwrap_or(option);
+    if option.ends_with("environment.systemPackages") || option.ends_with("home.packages") {
+        0
+    } else if option.contains("systemd.") {
+        1
+    } else {
+        2
+    }
+}
+
+/// `option (file, file +N)`: the option, with up to two files that set it.
+fn wanted_by(request: &Requested) -> String {
+    let Some(shown) = request.files.get(..SHOWN_FILES.min(request.files.len())) else {
+        return request.option.clone();
+    };
+    if shown.is_empty() {
+        return request.option.clone();
+    }
+    let mut files = shown.join(", ");
+    if request.files.len() > shown.len() {
+        files.push_str(&format!(" +{}", request.files.len() - shown.len()));
+    }
+    format!("{} ({files})", request.option)
 }
 
 fn same_packages(left: &[&Cascade], right: &[&Cascade]) -> bool {
@@ -376,8 +451,10 @@ fn requested(graph: &Graph, request: &Request) -> Requested {
     Requested {
         option: request.option.clone(),
         via: graph.name(&request.glue).to_owned(),
+        via_drv: request.glue.to_absolute_path(),
         item: graph.name(&request.item).to_owned(),
         item_drv: request.item.to_absolute_path(),
+        files: Vec::new(),
     }
 }
 
