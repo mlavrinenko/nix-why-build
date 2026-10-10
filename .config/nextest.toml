@@ -1,0 +1,15 @@
+# nextest's default profile, so every runner shares one output level rather
+# than each recipe remembering a flag.
+#
+# `just test` passes `--status-level fail` on the command line. `just cover`
+# runs the same suite through `cargo llvm-cov nextest`, which accepts that flag
+# and IGNORES it — measured on a real project at 2316 lines, 2137 of them `PASS`,
+# one per test, to report a green suite and a coverage table. A flag that is
+# accepted and ignored is worse than one that is absent, because the recipe then
+# claims something the output disproves.
+#
+# Setting it here fixes it where both runners read it. A green run prints the
+# summary and nothing per test; a failure still prints, per test, which is the
+# whole point of `fail` rather than `none`.
+[profile.default]
+status-level = "fail"

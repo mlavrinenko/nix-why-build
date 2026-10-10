@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/mlavrinenko/outdatty/main/schema/outdatty.schema.json
+
+# Declares which dependents must be re-confirmed when a source changes. After
+# editing a source, review the dependents and run `just outdatty-update` to
+# record the new state; `just outdatty-check` (part of `just check`) fails until
+# you do. Tune these groups to match where your project's coupled files live.
+
+# Files that must always belong to a group. outdatty defaults to requiring
+# EVERY tracked file, which rejects this scaffold's configs, CI, licenses and
+# lockfiles that carry no cross-file coupling. List only what is hand-coupled:
+# a new source module, doc, or manifest that needs a group of its own also
+# belongs here — the `[untracked]` failure message does not say so.
+require_tracked:
+  - "src/**"
+  - "www/**"
+  - "README.md"
+  - "CHANGELOG.md"
+  - "CONTRIBUTING.md"
+  - "AGENTS.md"
+  - "Cargo.toml"
+  - "Justfile"
+  - "flake.nix"
+groups:
+  # The public surface (CLI for a bin, the library API for a lib) is
+  # documented by hand. Touching the code flags the user-facing docs as
+  # needing a look. src/main.rs only exists for crate_kind == "bin".
+  - name: cli-docs
+    source:
+      - src/lib.rs
+      - src/main.rs
+    dependents:
+      - README.md
+      - www/index.html
+
+  # A package change (version, dependencies, metadata) should land in the
+  # changelog.
+  - name: release-notes
+    source:
+      - Cargo.toml
+    dependents:
+      - CHANGELOG.md
+
+  # The dev tooling and conventions documented for contributors track the
+  # files that define them: the dev shell, the recipes, the test runner's own
+  # profile, and the gate memoization rules that decide when a recipe re-runs.
+  # `.config/nextest.toml` is a recipe body in practice — `status-level` lives
+  # there because `cargo llvm-cov nextest` accepts the flag and ignores it — so
+  # an edit to it changes what CONTRIBUTING.md and AGENTS.md describe.
+  - name: dev-docs
+    source:
+      - flake.nix
+      - Justfile
+      - .config/nextest.toml
+      - .mmz/config.yaml
+    dependents:
+      - CONTRIBUTING.md
+      - AGENTS.md

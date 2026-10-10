@@ -1,0 +1,153 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/mlavrinenko/mmz/v0.5.0/schema/mmz.schema.json
+#
+# .mmz/config.yaml — per-sub-gate memoization for `just check`.
+#
+# Every arm of `just check` runs as `just mmz <subgate>` (which is `mmz just
+# <subgate>`), so mmz skips any arm whose declared inputs are byte-for-byte
+# unchanged since that arm last SUCCEEDED. A no-op `just check` re-run costs
+# nothing, which is what makes the pre-commit hook (`just install-hooks`)
+# affordable. The double hop makes mmz the cache identity — the rule name is
+# `just <recipe>`, uniform across every sub-gate.
+#
+# There is deliberately no `chronic` in `just check`. A cache hit prints the
+# `on_hit` note below to stderr (quiet by construction, and quiet is the common
+# case); a miss streams the underlying recipe's stdout/stderr live, so a failure
+# is readable where it happens instead of having to be recovered by re-running
+# the sub-recipe bare; a non-zero exit propagates out of `parallel` unchanged.
+#
+# Rules tagged `gate` are the gate set: `mmz --is-fresh --tag gate` asserts every
+# one of them already passed against this worktree, running none of them — the
+# predicate the pre-commit hook checks. Untagged rules (cover, crap) are
+# memoized for convenience only and stay out of it.
+#
+# Adding an arm to `just check` means adding its rule here: mmz's default
+# `strict` rejects an invocation that matches no rule, so a missing rule is an
+# error, never a silent pass-through.
+
+scopes:
+  # Everything that builds and tests the crate. Deliberately `src/**`, not
+  # `src/**/*.rs`: an asset `include_str!`'d into the binary belongs in the
+  # build's freshness too, and a Rust-only glob would silently drop it.
+  rust:
+    - "src/**"
+    - "tests/**"
+    - "Cargo.toml"
+    - "Cargo.lock"
+    - "rust-toolchain.toml"
+
+  # cargo fmt's config — edits change what "formatted" means.
+  rust-fmt:
+    - "rustfmt.toml"
+
+  # cargo clippy's config — edits change the lint surface.
+  rust-clippy:
+    - "clippy.toml"
+
+  # Cargo manifests only — cargo-machete reads these, not sources.
+  manifests:
+    - "Cargo.toml"
+    - "Cargo.lock"
+
+  # linecop config — a limit or override change busts the file-size gate.
+  file-size-config:
+    - ".linecop.yaml"
+
+  # outdatty's own config + lock. Every dependent outdatty re-reads is covered
+  # by `rust`/`docs` (outdatty.lock hashes their content), so a dependent edit
+  # busts through those scopes; a raw lock or group-config edit busts here.
+  outdatty-config:
+    - "outdatty.yaml"
+    - "outdatty.lock"
+
+  # Markdown linecop size-checks, plus what outdatty tracks as dependents.
+  # If CLAUDE.md is a symlink to AGENTS.md, that is one inode — list it once.
+  docs:
+    - "README.md"
+    - "CONTRIBUTING.md"
+    - "AGENTS.md"
+    - "CHANGELOG.md"
+    - "www/**"
+
+  # `just crap` reads the lcov `just cover` wrote. It is gitignored (it lives
+  # under target/), which is exactly why it is spelled as a LITERAL path: mmz's
+  # gitignore filter applies to glob matches only, and explicitly listed
+  # literals are always kept. A `cargo clean` between the two removes the file,
+  # and since the digest folds path AND content, that busts the rule rather
+  # than leaving it false-fresh.
+  lcov:
+    - "target/coverage/lcov.info"
+
+  # Shared by every rule: the recipe bodies (Justfile), the dev shell they all
+  # run in (flake.nix/flake.lock), and this manifest, which defines what "fresh"
+  # even means. Every formatter, linter and cargo tool comes from that shell, so
+  # a toolchain or tool-set bump must re-run every gate, machete included — and
+  # all of them are outdatty `dev-docs` SOURCES, so keeping them here stops
+  # `outdatty-check` reporting fresh after an edit to any. All content-hashed,
+  # so an untouched file contributes no churn.
+  # `.config/nextest.toml` is a recipe body in every sense that matters here:
+  # `status-level` lives there rather than in `just test` because
+  # `cargo llvm-cov nextest` accepts the flag and ignores it, so the file is
+  # what decides what the suite PRINTS and — the day it grows retries, a
+  # test-thread count or a default filter — what the suite RUNS. Without it
+  # here, every memoized `just test` and `just cover` record survives an edit
+  # to it.
+  gates-meta:
+    - "Justfile"
+    - ".config/nextest.toml"
+    - "flake.nix"
+    - "flake.lock"
+    - ".mmz/config.yaml"
+
+on_hit: "mmz: skipped {cache:command} (inputs unchanged)"
+
+commands:
+  - name: just fmt-check
+    tags: [gate]
+    inputs: [rust, rust-fmt, gates-meta]
+
+  - name: just clippy
+    tags: [gate]
+    inputs: [rust, rust-clippy, gates-meta]
+
+  # `match: exact` on purpose. `just test *ARGS` is also the developer's query
+  # command; with the default prefix matching, a stray `mmz just test <filter>`
+  # would record the `just test` identity off a FILTERED subset and the next
+  # `just check` would skip the full suite on the strength of it. Exact match
+  # keeps this cache record meaning only the bare, whole-workspace run that
+  # `just check` makes; `just test <filter>` carries no `mmz` and stays
+  # unmemoized regardless.
+  - name: just test
+    match: exact
+    tags: [gate]
+    inputs: [rust, gates-meta]
+
+  - name: just machete
+    tags: [gate]
+    inputs: [manifests, gates-meta]
+
+  # linecop scans `*.rs` and `*.md` (target/ and archive/ excluded by config).
+  # The Rust lives under `rust`; every tracked `.md` under `docs`.
+  - name: just check-file-size
+    tags: [gate]
+    inputs: [rust, file-size-config, docs, gates-meta]
+
+  # jscpd scans `src/` and `tests/` for duplicated Rust blocks (>=70 tokens).
+  # The `-k 70` threshold is Justfile-defined, so a Justfile edit re-runs this.
+  - name: just check-dry
+    tags: [gate]
+    inputs: [rust, gates-meta]
+
+  # outdatty re-reads every dependent's current content and compares it to the
+  # lock; `outdatty-config` covers the lock and the group definitions directly.
+  - name: just outdatty-check
+    tags: [gate]
+    inputs: [outdatty-config, rust, docs, gates-meta]
+
+  # Untagged from here down: these run outside `just check` (CI runs them in
+  # their own job), so they stay out of the gate set. Memoized only so a no-op
+  # re-run of the slow coverage pair is free.
+  - name: just cover
+    inputs: [rust, gates-meta]
+
+  - name: just crap
+    inputs: [rust, lcov, gates-meta]

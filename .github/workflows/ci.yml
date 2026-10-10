@@ -1,0 +1,113 @@
+name: CI
+
+# Runs on every push/PR. We deliberately do NOT use paths-ignore: a required
+# status check that never triggers (e.g. on a www-only PR) blocks merges
+# forever. The job is cheap, so it runs unconditionally.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: ~
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+# Actions are pinned: first-party actions to immutable release tags, third-party
+# actions to commit SHAs. Bump them with Dependabot's `github-actions` ecosystem.
+jobs:
+  check:
+    name: Check, Lint, Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      # Caches /nix through the GitHub Actions cache (no external account or
+      # token). Replaces the deprecated DeterminateSystems/magic-nix-cache-action.
+      - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/flake.lock', '**/*.nix') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          gc-max-store-size-linux: 5G
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 0
+          purge-primary-key: never
+
+      # Same dev shell as local development, so CI and `just check` match.
+      - name: Check
+        run: nix develop --command just check
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/flake.lock', '**/*.nix') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          gc-max-store-size-linux: 5G
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 0
+          purge-primary-key: never
+
+      - name: Coverage (fails under 70%)
+        run: nix develop --command just cover
+
+      # CRAP metric: fails if a function is both complex and undertested,
+      # which a global coverage threshold can hide. Consumes the lcov that
+      # `just cover` wrote.
+      - name: CRAP gate (fails above 30)
+        run: nix develop --command just crap
+
+  deny:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.3
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/flake.lock', '**/*.nix') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          gc-max-store-size-linux: 5G
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 0
+          purge-primary-key: never
+
+      # Same recipe as local `just deny`, so CI and a developer's run cannot
+      # diverge on which cargo-deny checks are enforced.
+      - name: Advisories, licenses, bans
+        run: nix develop --command just deny
+
+  msrv:
+    name: MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.3
+      # Read the MSRV out of Cargo.toml rather than hardcoding it here: a
+      # hardcoded copy silently keeps testing the old version after someone
+      # bumps `rust-version`, which is exactly when the job stops meaning
+      # anything.
+      - name: Read MSRV from Cargo.toml
+        id: msrv
+        run: |
+          version=$(sed -n 's/^rust-version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          if [ -z "$version" ]; then
+            echo "::error::no rust-version in Cargo.toml"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9
+        with:
+          toolchain: ${{ steps.msrv.outputs.version }}
+      - name: Check
+        run: cargo check --workspace --all-targets

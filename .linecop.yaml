@@ -1,0 +1,9 @@
+limits:
+  Rust: 500
+  Markdown: 200
+
+count_mode: total
+
+exclude_dirs:
+  - target
+  - archive

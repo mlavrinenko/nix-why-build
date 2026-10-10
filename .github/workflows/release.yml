@@ -1,0 +1,204 @@
+name: Release
+
+# A pushed `v*` tag releases that tag. A release that failed part-way is
+# finished by re-running it on the same tag, never by cutting a new version:
+#
+#   gh workflow run release.yml -f tag=v1.2.3
+#
+# Every job checks out the tag, not the dispatching branch, and every step with
+# an irreversible effect first looks for that effect: `cargo publish` is skipped
+# when the version is already on crates.io, and the GitHub release is updated in
+# place when it exists. A re-run therefore completes what the first run left.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release again, e.g. v1.2.3"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+# One run per tag: a re-run queued behind a live run waits for it instead of
+# racing it to crates.io.
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+# Actions are pinned: first-party actions to immutable release tags, third-party
+# actions to commit SHAs. Bump them with Dependabot's `github-actions` ecosystem.
+jobs:
+  meta:
+    name: Resolve tag, version and binary
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+      binary: ${{ steps.meta.outputs.binary }}
+      latest: ${{ steps.meta.outputs.latest }}
+    steps:
+      # `refs/tags/` makes checkout fail on a dispatch input that names no tag.
+      - uses: actions/checkout@v6.0.3
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          fetch-depth: 0
+      - id: meta
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          name=$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          # The tag must match the Cargo.toml version, otherwise `cargo publish`
+          # would ship a different version than the tag implies.
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::tag $TAG does not match Cargo.toml version $version"
+            exit 1
+          fi
+          # Re-releasing an old tag must not take "Latest" from a newer one.
+          highest=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          latest=false
+          [ "$TAG" = "$highest" ] && latest=true
+          {
+            echo "tag=$TAG"
+            echo "version=$version"
+            echo "binary=$name"
+            echo "latest=$latest"
+          } >> "$GITHUB_OUTPUT"
+
+  check:
+    name: Check
+    needs: meta
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          ref: refs/tags/${{ needs.meta.outputs.tag }}
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+      - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
+        with:
+          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/flake.lock', '**/*.nix') }}
+          restore-prefixes-first-match: nix-${{ runner.os }}-
+          gc-max-store-size-linux: 5G
+          purge: true
+          purge-prefixes: nix-${{ runner.os }}-
+          purge-created: 0
+          purge-primary-key: never
+
+      - name: Check
+        run: nix develop --command just check
+
+  build:
+    name: Build (${{ matrix.target }})
+    needs: [check, meta]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          ref: refs/tags/${{ needs.meta.outputs.tag }}
+
+      # Cross-platform release binaries are built with rustup rather than Nix
+      # (Nix on the Windows/macOS runners is impractical). Pinned to a commit, so
+      # the channel must be given explicitly; it tracks rust-toolchain.toml.
+      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable channel pinned below
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2.9.1
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+
+      - name: Build release binary
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Rename binary (unix)
+        if: runner.os != 'Windows'
+        run: cp target/${{ matrix.target }}/release/${{ needs.meta.outputs.binary }} ${{ needs.meta.outputs.binary }}-${{ matrix.target }}
+
+      - name: Rename binary (windows)
+        if: runner.os == 'Windows'
+        run: cp target/${{ matrix.target }}/release/${{ needs.meta.outputs.binary }}.exe ${{ needs.meta.outputs.binary }}-${{ matrix.target }}.exe
+
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: ${{ needs.meta.outputs.binary }}-${{ matrix.target }}
+          path: ${{ needs.meta.outputs.binary }}-${{ matrix.target }}*
+
+  publish:
+    name: Publish to crates.io
+    # Depends on build so a failed target stops the (irreversible) crates.io push.
+    needs: [check, meta, build]
+    runs-on: ubuntu-latest
+    environment: crates-io
+    steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          ref: refs/tags/${{ needs.meta.outputs.tag }}
+
+      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable channel pinned below
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@v2.9.1
+
+      # A version already on crates.io (a re-run, or a hand `cargo publish`) is
+      # skipped rather than failed, so the GitHub release below still happens.
+      # Any answer but 200 or 404 stops the run: an unreachable crates.io must
+      # not be read as "not published yet".
+      # `--locked` keeps the published build reproducible; requires a committed Cargo.lock.
+      - name: Publish unless already on crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          CRATE: ${{ needs.meta.outputs.binary }}
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          status=$(curl -sS -o /dev/null -w '%{http_code}' -A "$GITHUB_REPOSITORY release workflow" \
+            "https://crates.io/api/v1/crates/$CRATE/$VERSION")
+          case "$status" in
+            200) echo "::notice::$CRATE $VERSION is already on crates.io; skipping cargo publish" ;;
+            404) cargo publish --locked ;;
+            *) echo "::error::crates.io answered HTTP $status for $CRATE $VERSION"; exit 1 ;;
+          esac
+
+  release:
+    name: Create GitHub Release
+    needs: [meta, build, publish]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8.0.1
+        with:
+          merge-multiple: true
+
+      # Updates the release in place when it exists, so a re-run is safe.
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3.0.0
+        with:
+          tag_name: ${{ needs.meta.outputs.tag }}
+          make_latest: ${{ needs.meta.outputs.latest }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: ${{ needs.meta.outputs.binary }}-*

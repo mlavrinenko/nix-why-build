@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -eo pipefail
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+
+# outdatty.lock records the coupled sources' hashes. A commit whose sources
+# moved while the lock stayed behind leaves the committed tree stale, and the
+# mmz check below cannot see it: that check reads the worktree, where the
+# updated lock is present even when unstaged. Refuse the commit until the lock
+# is either staged with the change it records or restored.
+if ! git diff --quiet -- outdatty.lock; then
+  echo "pre-commit: outdatty.lock has unstaged changes" >&2
+  echo "pre-commit: stage it with the change it records (git add outdatty.lock) or restore it" >&2
+  exit 1
+fi
+
+# `mmz --is-fresh --tag gate` asserts every gate-tagged rule in
+# .mmz/config.yaml already passed against this worktree, running
+# nothing of its own. It is cheap enough for every commit.
+# Enter the flake dev shell the cheapest way available.
+if command -v mmz >/dev/null 2>&1; then
+  exec mmz --is-fresh --tag gate
+elif command -v direnv >/dev/null 2>&1 && direnv exec "$root" true 2>/dev/null; then
+  exec direnv exec "$root" mmz --is-fresh --tag gate
+fi
+exec nix develop "$root" --command mmz --is-fresh --tag gate
