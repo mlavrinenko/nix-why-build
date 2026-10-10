@@ -63,3 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every `nix` call enables `nix-command` and `flakes` itself, as
   `nixos-rebuild --flake` does, so a nix with them off in its configuration
   still works.
+- `nix-why-build .` and any other installable `nix build` accepts work: nix
+  resolves the `.drv` itself with `nix path-info --derivation`, so a flake
+  reference without `#` explains its default package. A configuration with a
+  quoted, dotted name (`.#nixosConfigurations."host.lan"`) resolves to its
+  toplevel and gets its option index.

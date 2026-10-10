@@ -76,6 +76,7 @@ $ nix-why-build .#nixosConfigurations.tank      # config.system.build.toplevel
 $ nix-why-build .#homeConfigurations.me         # activationPackage
 $ nix-why-build .#darwinConfigurations.mac      # system
 $ nix-why-build nixpkgs#hello                   # as is
+$ nix-why-build .                               # this flake's default package
 $ nix-why-build /nix/store/...-foo.drv          # a .drv you already have
 ```
 

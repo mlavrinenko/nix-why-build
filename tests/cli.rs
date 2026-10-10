@@ -80,13 +80,13 @@ fn nix_prologue(log: &Path) -> String {
     )
 }
 
-/// A `nix` on `PATH` that answers `config show --json` and `eval`, logging
+/// A `nix` on `PATH` that answers `config show --json` and `path-info`, logging
 /// the first line of each call to `args.log`.
-/// `--apply` evaluations (the option index) print `index`, `flake archive`
+/// `eval` (the option index) prints `index`, `flake archive`
 /// prints a flake whose source is `/nix/store/s-source`.
 fn fake_nix(dir: &Path, drv: &str, config: &str, index: &str) -> String {
     let script = format!(
-        "#!/bin/sh\n{prologue}case \"$1\" in\n  config) printf '%s' '{config}' ;;\n  flake) printf '%s' '{{\"path\":\"/nix/store/s-source\"}}' ;;\n  eval) case \"$*\" in\n    *--apply*) printf '%s' '{index}' ;;\n    *) printf '%s' '{drv}' ;;\n  esac ;;\nesac\n",
+        "#!/bin/sh\n{prologue}case \"$1\" in\n  config) printf '%s' '{config}' ;;\n  flake) printf '%s' '{{\"path\":\"/nix/store/s-source\"}}' ;;\n  path-info) printf '%s\\n' '{drv}' ;;\n  eval) printf '%s' '{index}' ;;\nesac\n",
         prologue = nix_prologue(&dir.join("args.log")),
     );
     install_nix(dir, &script)
@@ -193,7 +193,9 @@ fn evaluates_a_nixos_configuration_and_reads_nix_config() {
     let log = std::fs::read_to_string(bin.path().join("args.log")).expect("log");
     assert!(log.contains("config show --json"), "{log}");
     assert!(
-        log.contains("eval --raw .#nixosConfigurations.box.config.system.build.toplevel.drvPath"),
+        log.contains(
+            "path-info --derivation .#nixosConfigurations.box.config.system.build.toplevel"
+        ),
         "{log}"
     );
 }
@@ -291,7 +293,7 @@ fn a_failing_option_index_is_a_warning_not_a_failure() {
     let world = world();
     let bin = tempfile::tempdir().expect("tempdir");
     let script = format!(
-        "#!/bin/sh\n{DROP_FEATURES}case \"$*\" in\n  *--apply*) printf 'evaluating...\\nerror: infinite recursion encountered\\n  at x.nix\\n' >&2; exit 1 ;;\n  eval*) printf '%s' '{}' ;;\n  flake*) printf '%s' '{{\"path\":\"/s\"}}' ;;\nesac\n",
+        "#!/bin/sh\n{DROP_FEATURES}case \"$*\" in\n  *--apply*) printf 'evaluating...\\nerror: infinite recursion encountered\\n  at x.nix\\n' >&2; exit 1 ;;\n  path-info*) printf '%s\\n' '{}' ;;\n  flake*) printf '%s' '{{\"path\":\"/s\"}}' ;;\nesac\n",
         world.top.to_absolute_path()
     );
     let path = install_nix(bin.path(), &script);
@@ -337,4 +339,53 @@ fn every_nix_call_enables_the_features_it_needs() {
             "{call}"
         );
     }
+}
+
+/// Runs `installable` against a fake nix that answers with `world`'s top
+/// `.drv`; returns the calls it logged.
+fn nix_calls(world: &World, installable: &str) -> String {
+    let bin = tempfile::tempdir().expect("tempdir");
+    let path = fake_nix(bin.path(), &world.top.to_absolute_path(), "{}", "{}");
+    cmd(world)
+        .env("PATH", path)
+        .args([
+            installable,
+            "--substituter",
+            &cache_url(world),
+            "--trusted-key",
+            PUBLIC,
+        ])
+        .assert()
+        .success()
+        .stdout(GROUPED);
+    std::fs::read_to_string(bin.path().join("args.log")).unwrap_or_default()
+}
+
+#[test]
+fn a_flake_installable_without_a_fragment_is_handed_to_nix_whole() {
+    let log = nix_calls(&world(), ".");
+    assert!(log.contains("path-info --derivation .\n"), "{log}");
+    assert!(log.contains("flake archive --json --dry-run .\n"), "{log}");
+}
+
+#[test]
+fn a_quoted_configuration_name_with_dots_still_resolves_to_its_toplevel() {
+    let log = nix_calls(&world(), r#".#nixosConfigurations."a.b""#);
+    assert!(
+        log.contains(
+            r#"path-info --derivation .#nixosConfigurations."a.b".config.system.build.toplevel"#
+        ),
+        "{log}"
+    );
+    assert!(
+        log.contains(r#"eval --json .#nixosConfigurations."a.b" --apply"#),
+        "{log}"
+    );
+}
+
+#[test]
+fn a_drv_path_runs_without_asking_nix_anything() {
+    let world = world();
+    let log = nix_calls(&world, &world.top.to_absolute_path());
+    assert_eq!(log, "");
 }

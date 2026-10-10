@@ -2,6 +2,38 @@
 
 use nix_derivation::StorePath;
 
+/// The attribute names of an attribute path: dots separate them, except
+/// inside double quotes (`nixosConfigurations."a.b"` is two names, the second
+/// keeping its quotes), as nix reads it.
+fn attr_names(attr: &str) -> Vec<&str> {
+    let mut names = Vec::new();
+    let mut start = 0;
+    let mut quoted = false;
+    for (at, ch) in attr.char_indices() {
+        match ch {
+            '"' => quoted = !quoted,
+            '.' if !quoted => {
+                names.push(&attr[start..at]);
+                start = at + 1;
+            }
+            _ => {}
+        }
+    }
+    names.push(&attr[start..]);
+    names
+}
+
+/// What to append to a configuration attribute to get the package it builds,
+/// when `attr` names a configuration.
+fn build_suffix(attr: &str) -> Option<&'static str> {
+    match attr_names(attr).as_slice() {
+        ["nixosConfigurations", _] => Some(".config.system.build.toplevel"),
+        ["homeConfigurations", _] => Some(".activationPackage"),
+        ["darwinConfigurations", _] => Some(".system"),
+        _ => None,
+    }
+}
+
 /// The attribute a configuration installable builds: a NixOS system's
 /// toplevel, a home-manager activation package, a nix-darwin system. Any
 /// other installable is returned as is.
@@ -10,14 +42,7 @@ pub fn toplevel_attr(installable: &str) -> String {
     let Some((flake, attr)) = installable.split_once('#') else {
         return installable.to_owned();
     };
-    let parts: Vec<&str> = attr.split('.').collect();
-    let suffix = match parts.as_slice() {
-        ["nixosConfigurations", _] => ".config.system.build.toplevel",
-        ["homeConfigurations", _] => ".activationPackage",
-        ["darwinConfigurations", _] => ".system",
-        _ => "",
-    };
-    format!("{flake}#{attr}{suffix}")
+    format!("{flake}#{attr}{}", build_suffix(attr).unwrap_or_default())
 }
 
 /// The configuration an installable names, when it names one
@@ -25,20 +50,18 @@ pub fn toplevel_attr(installable: &str) -> String {
 #[must_use]
 pub fn config_attr(installable: &str) -> Option<String> {
     let (_, attr) = installable.split_once('#')?;
-    let parts: Vec<&str> = attr.split('.').collect();
-    match parts.as_slice() {
-        [
-            "nixosConfigurations" | "homeConfigurations" | "darwinConfigurations",
-            _,
-        ] => Some(installable.to_owned()),
-        _ => None,
-    }
+    build_suffix(attr).map(|_| installable.to_owned())
 }
 
-/// The flake reference of a flake installable: what comes before `#`.
+/// The flake reference of an installable: what comes before `#`, else the
+/// whole installable (`.`, `github:o/r`). A store path is no flake.
 #[must_use]
 pub fn flake_ref(installable: &str) -> Option<&str> {
-    installable.split_once('#').map(|(flake, _)| flake)
+    match installable.split_once('#') {
+        Some((flake, _)) => Some(flake),
+        None if installable.starts_with("/nix/store/") => None,
+        None => Some(installable),
+    }
 }
 
 /// A `.drv` path given directly, rather than an installable to evaluate.
@@ -111,7 +134,10 @@ pub fn first_error(text: &str) -> String {
 }
 
 /// The `.drv` an installable builds: the path itself when it is one, else
-/// `nix eval --raw <toplevel>.drvPath`, which also writes the `.drv` files.
+/// what `nix path-info --derivation` resolves the installable to, which also
+/// writes the `.drv` files. Nix parses the installable, so anything
+/// `nix build` accepts works; only a configuration gets its build attribute
+/// appended.
 ///
 /// # Errors
 ///
@@ -120,10 +146,10 @@ pub async fn drv_path(installable: &str) -> Result<StorePath, EvalError> {
     if let Some(path) = as_drv_path(installable) {
         return Ok(path);
     }
-    let attr = format!("{}.drvPath", toplevel_attr(installable));
-    let output = nix(&["eval", "--raw", &attr]).await?;
+    let attr = toplevel_attr(installable);
+    let output = nix(&["path-info", "--derivation", &attr]).await?;
     StorePath::from_absolute_path(output.trim().as_bytes()).map_err(|_| EvalError::NotAPath {
-        command: format!("nix eval --raw {attr}"),
+        command: format!("nix path-info --derivation {attr}"),
         output,
     })
 }
@@ -151,8 +177,13 @@ mod tests {
                 ".#nixosConfigurations.tank.config.system.build.vm",
                 ".#nixosConfigurations.tank.config.system.build.vm",
             ),
+            (
+                r#".#nixosConfigurations."host.lan""#,
+                r#".#nixosConfigurations."host.lan".config.system.build.toplevel"#,
+            ),
             ("nixpkgs#hello", "nixpkgs#hello"),
             ("./result", "./result"),
+            (".", "."),
         ];
         for (input, expected) in cases {
             assert_eq!(toplevel_attr(input), expected, "{input}");
@@ -184,7 +215,26 @@ mod tests {
             Some("github:o/r")
         );
         assert_eq!(super::flake_ref(".#x"), Some("."));
+    }
+
+    #[test]
+    fn a_quoted_name_holds_its_dots() {
+        let quoted = r#".#nixosConfigurations."host.lan""#;
+        assert_eq!(super::config_attr(quoted).as_deref(), Some(quoted));
+        assert_eq!(
+            super::config_attr(r#".#nixosConfigurations."host.lan".config"#),
+            None
+        );
+        assert_eq!(super::config_attr(r#".#packages."a.b".default"#), None);
+    }
+
+    #[test]
+    fn a_flake_installable_is_its_own_ref_unless_it_is_a_store_path() {
+        assert_eq!(super::flake_ref("."), Some("."));
+        assert_eq!(super::flake_ref("github:o/r"), Some("github:o/r"));
+        assert_eq!(super::flake_ref("nixpkgs"), Some("nixpkgs"));
         assert_eq!(super::flake_ref("/nix/store/x.drv"), None);
+        assert_eq!(super::flake_ref("/nix/store/x-hello"), None);
     }
 
     #[test]
