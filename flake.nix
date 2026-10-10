@@ -2,10 +2,6 @@
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
     qahq.url = "github:mlavrinenko/qahq";
-    naersk = {
-      url = "github:nix-community/naersk";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   };
 
@@ -13,7 +9,6 @@
     {
       qahq,
       flake-utils,
-      naersk,
       nixpkgs,
       ...
     }:
@@ -24,8 +19,6 @@
           inherit system;
         };
 
-        naersk' = pkgs.callPackage naersk { };
-
         # nixpkgs' rustc ships no `llvm-tools-preview` component, so
         # cargo-llvm-cov cannot find llvm-cov/llvm-profdata in the sysroot.
         # Point it at a standalone LLVM of the SAME major as rustc's — a
@@ -34,8 +27,18 @@
       in
       {
         # For `nix build` & `nix run`:
-        packages.default = naersk'.buildPackage {
+        # buildRustPackage, not naersk: naersk cannot resolve the workspace-
+        # inherited fields of a git dependency (nix-compat, from snix).
+        # `just check` gates the suite, so the package build skips it.
+        packages.default = pkgs.rustPlatform.buildRustPackage {
+          pname = "nix-why-build";
+          version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
           src = ./.;
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+            outputHashes."nix-compat-0.1.0" = "sha256-0VzQuIbooV9F2t7EXTZ1TWKCwNdyTFob4BF1SEfGpKM=";
+          };
+          doCheck = false;
         };
 
         # For `nix develop`:
