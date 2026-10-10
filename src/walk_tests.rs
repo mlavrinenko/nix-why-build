@@ -1,45 +1,8 @@
-use std::collections::HashMap;
-
 use nix_compat::store_path::StorePath;
 
-use crate::cache::Availability;
-use crate::fixture_tests::{DrvSpec, FakeStore, absent_drv, spec};
+use crate::fixture_tests::{DrvSpec, FakeCache as Fake, FakeStore, absent_drv, spec};
 
-use super::{Graph, Query, Verdict, walk};
-
-/// Serves exactly the given paths; everything else is missing.
-#[derive(Default)]
-struct Fake {
-    served: Vec<StorePath>,
-    unknown: Vec<StorePath>,
-    asked: std::sync::Mutex<Vec<StorePath>>,
-}
-
-impl Query for Fake {
-    async fn query(&self, paths: &[StorePath]) -> HashMap<StorePath, Availability> {
-        self.asked
-            .lock()
-            .expect("lock")
-            .extend(paths.iter().cloned());
-        paths
-            .iter()
-            .map(|path| {
-                let answer = if self.served.contains(path) {
-                    Availability::Served {
-                        substituter: "fake".to_owned(),
-                    }
-                } else if self.unknown.contains(path) {
-                    Availability::Unknown {
-                        reason: "down".to_owned(),
-                    }
-                } else {
-                    Availability::Missing
-                };
-                (path.clone(), answer)
-            })
-            .collect()
-    }
-}
+use super::{Graph, Verdict, walk};
 
 fn verdict<'a>(graph: &'a Graph, path: &StorePath) -> Option<&'a Verdict> {
     graph.nodes.get(path).map(|node| &node.verdict)

@@ -53,6 +53,45 @@ pub struct Graph {
 }
 
 impl Graph {
+    /// Every derivation that gets built, in no particular order.
+    pub fn builds(&self) -> impl Iterator<Item = &StorePath> {
+        self.nodes
+            .iter()
+            .filter(|(_, node)| node.verdict == Verdict::Build)
+            .map(|(path, _)| path)
+    }
+
+    /// The inputs of `path` that get built themselves, in path order.
+    #[must_use]
+    pub fn build_inputs(&self, path: &StorePath) -> Vec<&StorePath> {
+        self.nodes
+            .get(path)
+            .and_then(|node| node.drv.as_ref())
+            .map(|drv| {
+                drv.inputs
+                    .keys()
+                    .filter(|input| {
+                        self.nodes
+                            .get(*input)
+                            .is_some_and(|node| node.verdict == Verdict::Build)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// The derivation's name, or the `.drv` file's when it was not read.
+    #[must_use]
+    pub fn name<'a>(&'a self, path: &'a StorePath) -> &'a str {
+        self.nodes
+            .get(path)
+            .and_then(|node| node.drv.as_ref())
+            .map_or_else(
+                || path.name().trim_end_matches(".drv"),
+                |drv| drv.name.as_str(),
+            )
+    }
+
     /// Derivations that get built, sorted by name.
     #[must_use]
     pub fn to_build(&self) -> Vec<&Drv> {

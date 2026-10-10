@@ -220,3 +220,42 @@ pub fn file_cache(dir: &Path, entries: &[(&StorePath, String)]) -> String {
     }
     format!("file://{}", dir.display())
 }
+
+/// Serves exactly the given paths, fails on the `unknown` ones, misses the
+/// rest, and records what it was asked.
+#[derive(Default)]
+pub struct FakeCache {
+    pub served: Vec<StorePath>,
+    pub unknown: Vec<StorePath>,
+    pub asked: std::sync::Mutex<Vec<StorePath>>,
+}
+
+impl nix_why_build::walk::Query for FakeCache {
+    async fn query(
+        &self,
+        paths: &[StorePath],
+    ) -> std::collections::HashMap<StorePath, nix_why_build::cache::Availability> {
+        use nix_why_build::cache::Availability;
+        self.asked
+            .lock()
+            .expect("lock")
+            .extend(paths.iter().cloned());
+        paths
+            .iter()
+            .map(|path| {
+                let answer = if self.served.contains(path) {
+                    Availability::Served {
+                        substituter: "fake".to_owned(),
+                    }
+                } else if self.unknown.contains(path) {
+                    Availability::Unknown {
+                        reason: "down".to_owned(),
+                    }
+                } else {
+                    Availability::Missing
+                };
+                (path.clone(), answer)
+            })
+            .collect()
+    }
+}

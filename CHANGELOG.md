@@ -21,3 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - After the first substituter misses, the rest are asked at once, and a
   request stalled past 1.5 s is sent again: the tank walk went from 23.6 s to
   about 9 s.
+- `roots::split` tells roots (built while every input is served) from
+  cascades (built because an input is), with a shortest chain from each
+  cascade down to each of its roots.

@@ -19,8 +19,11 @@ pub mod config;
 pub mod drv;
 pub mod eval;
 pub mod report;
+pub mod roots;
 pub mod walk;
 
+#[cfg(test)]
+extern crate self as nix_why_build;
 #[cfg(test)]
 #[path = "../tests/support/fixture.rs"]
 mod fixture_tests;
