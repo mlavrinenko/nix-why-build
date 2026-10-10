@@ -1,3 +1,7 @@
+//! Explain what a Nix build would compile because no binary cache serves it.
+
+pub mod cache;
+
 use thiserror::Error;
 
 /// Errors that can occur in this library.

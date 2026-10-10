@@ -3,7 +3,9 @@ algorithm: blake3
 groups:
   cli-docs:
     source:
-      src/lib.rs: b094bc298a082dd49edd9b158ca69e6eec21bc4bc51efd1f1d48ca97527c270f
+      src/cache.rs: bc1780449a2a824f9cfb9ffddd49760d46ce3380b92b81ec4656764fbe8b0109
+      src/cache_tests.rs: 64faa8ee057963f8bbb2f58b270906954c118ee37b10a864c43ea59c8e2e5757
+      src/lib.rs: 9e01f480872373cb7e96fae01d0859bc5ddb10ea0fec7acca30020b66a631dd2
       src/main.rs: 5013e8c375c79bc55d02e2cc35e14a754e3edf52862c429df27af1951a7fcdbd
     dependents:
       README.md: 5001a683dff7af084860d316dc88514f403b7a2015a6a980a32dcf618ca893da
@@ -19,6 +21,6 @@ groups:
       CONTRIBUTING.md: 245c0c17727200d7b489b4b9adb0884299c57518a86439279583d002ab44ba45
   release-notes:
     source:
-      Cargo.toml: 859411b631d9235c557da08fb6106974dc20ca27bb07a4eed4a76ca7e2c59dff
+      Cargo.toml: 9fd15e1d5c39937feda5c2cc4d5952888e885474ca44340d89e66943e3f9451b
     dependents:
-      CHANGELOG.md: 2f51028a14eea0d6736280835fbf7aa3350ad056fa31a5b385b0b3677f672405
+      CHANGELOG.md: ff6f36cad197a99e446b7665337ac8a0e62546968207d4dff8e9d67c662b6bc5

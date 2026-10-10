@@ -21,13 +21,11 @@ require_tracked:
   - "Justfile"
   - "flake.nix"
 groups:
-  # The public surface (CLI for a bin, the library API for a lib) is
-  # documented by hand. Touching the code flags the user-facing docs as
-  # needing a look. src/main.rs only exists for crate_kind == "bin".
+  # The README shows the CLI, its output and the library API by example, so
+  # any source change flags it for a look.
   - name: cli-docs
     source:
-      - src/lib.rs
-      - src/main.rs
+      - src/**
     dependents:
       - README.md
       - www/index.html
