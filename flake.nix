@@ -7,16 +7,24 @@
 
   outputs =
     {
+      self,
       qahq,
       flake-utils,
       nixpkgs,
       ...
     }:
+    let
+      crate = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package;
+    in
     flake-utils.lib.eachDefaultSystem (
       system:
       let
+        # The overlay is the one definition of the package, so `nix build`,
+        # the flake check and a consumer's `pkgs.nix-why-build` build the same
+        # derivation.
         pkgs = (import nixpkgs) {
           inherit system;
+          overlays = [ self.overlays.default ];
         };
 
         # nixpkgs' rustc ships no `llvm-tools-preview` component, so
@@ -26,15 +34,16 @@
         llvm = pkgs.llvmPackages_21.llvm;
       in
       {
-        # For `nix build` & `nix run`:
-        # `just check` gates the suite, so the package build skips it.
-        packages.default = pkgs.rustPlatform.buildRustPackage {
-          pname = "nix-why-build";
-          version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
-          src = ./.;
-          cargoLock.lockFile = ./Cargo.lock;
-          doCheck = false;
-        };
+        # For `nix build` & `nix run`.
+        packages.default = pkgs.nix-why-build;
+
+        # `nix flake check` builds the package `nix run` installs, so a
+        # `Cargo.lock` the vendoring rejects, or a source file the build
+        # misses, fails CI instead of the README's first install line.
+        checks.package = self.packages.${system}.default;
+
+        # `nix fmt` formats the `.nix` files; `just nix-fmt` checks them.
+        formatter = pkgs.nixfmt;
 
         # For `nix develop`:
         devShells.default = pkgs.mkShell {
@@ -91,5 +100,26 @@
           '';
         };
       }
-    );
+    )
+    // {
+      # For a NixOS or home-manager configuration: add this to
+      # `nixpkgs.overlays` and `pkgs.nix-why-build` appears. It sits outside
+      # `eachDefaultSystem` because an overlay is not per system.
+      overlays.default = final: _prev: {
+        nix-why-build = final.rustPlatform.buildRustPackage {
+          pname = crate.name;
+          inherit (crate) version;
+          src = ./.;
+          cargoLock.lockFile = ./Cargo.lock;
+          # `just check` gates the suite, so the package build skips it.
+          doCheck = false;
+          meta = {
+            inherit (crate) description;
+            homepage = crate.repository;
+            license = final.lib.licenses.mit;
+            mainProgram = crate.name;
+          };
+        };
+      };
+    };
 }

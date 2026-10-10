@@ -18,6 +18,8 @@
 - `just check` also runs rustdoc with `-D warnings`, `nixfmt --check` over the
   tracked `.nix` files and `actionlint` over the workflows; `just fmt` formats
   Rust and Nix.
+- CI's check job also runs `nix flake check`, which builds the package; run it
+  after touching `flake.nix` or `Cargo.lock` (it takes a few minutes).
 - Every arm of `just check` is `just mmz <subgate>`:
   [mmz](https://github.com/mlavrinenko/mmz) skips arms whose declared inputs are
   unchanged since they last passed, so a new or retargeted gate needs its rule in

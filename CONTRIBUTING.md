@@ -119,6 +119,10 @@ before docs.rs renders it. `just nix-fmt` runs `nixfmt --check` over every
 tracked `.nix` file, and `just fmt` rewrites them. `just actionlint` lints
 `.github/workflows`, including the shell in each `run:` step.
 
+CI's check job also runs `nix flake check`, which builds the package `nix run`
+installs; `just check` only runs cargo in the dev shell and would miss a
+lockfile the Nix vendoring rejects. `nix fmt` formats with `nixfmt`.
+
 ## Copy-Paste Gate
 
 `just check-dry` runs [jscpd](https://github.com/kucherenko/jscpd) over `src/`

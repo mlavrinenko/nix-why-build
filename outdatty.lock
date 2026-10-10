@@ -33,17 +33,17 @@ groups:
       src/walk.rs: 61741688e4d4a1d2e8e3961cd575bf97651d561bab51f9b8c819281dec0d8d00
       src/walk_tests.rs: 5d31c6850c225f9ef859b112f6620456fe09d1acb792aeb820d3723241ba1a4c
     dependents:
-      README.md: 9e275692ed23ca32112ab37eae352b09c585dceb93de07b7adb869d7d8a7f7f4
+      README.md: 931c3db7693be5be78a67c319b71433140efcb5101c513657f24b8135b602a5a
       www/index.html: 35a390effd7c6f964b03b8834f0bf4a6d9aa86050292f1572ea7f45146e748b6
   dev-docs:
     source:
       .config/nextest.toml: e2eda0853a3c73ff4422e4d9a5f670c1aef1705b2281379dfdffdab04e837a79
       .mmz/config.yaml: 33007085872b39ae244fbe5201446cac5a3cf4969dd006a8c41564b2d4149844
       Justfile: 50ac39999578ae2d728955bef08732ef69e1974a6616c96cd293f3da996d6061
-      flake.nix: fd83bb8630dece371f034f2e0b40a7ff4482b33c4d542c059c61103359111c42
+      flake.nix: 0f304c4d43a9a67fd6b57f1d69e2d939ecb03f7d76bdc1ae19a8bccffc7f203b
     dependents:
-      AGENTS.md: 121a01fae6df6bf4d267d4b344fdf85d2807b478d7662879af2af4fc37255fd5
-      CONTRIBUTING.md: 5193a8e41b0c65928e52b9d9b117de3466c4a8636bd26dd3eee4711f8ec496dc
+      AGENTS.md: 08aa6e994c57b5225c30fda428bb8e76194c9cb02fe18a7796e22ddb66d9de6a
+      CONTRIBUTING.md: 098515368c8b50cc5b3ac2a9f54fb5473a116574cf2b0ec035a5916c231ea9ee
   release-notes:
     source:
       Cargo.toml: ed6c13a236c92abac8f9395e0f7c9204d22a9e449e9f706b7a3381d0c9950a60

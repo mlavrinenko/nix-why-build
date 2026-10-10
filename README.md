@@ -135,6 +135,13 @@ nix run github:mlavrinenko/nix-why-build -- .#nixosConfigurations.tank
 cargo install nix-why-build
 ```
 
+On NixOS or home-manager, take the overlay and `pkgs.nix-why-build` shows up.
+
+```nix
+nixpkgs.overlays = [ inputs.nix-why-build.overlays.default ];
+environment.systemPackages = [ pkgs.nix-why-build ];
+```
+
 Every release also lands on crates.io and as a binary on the
 [releases page](https://github.com/mlavrinenko/nix-why-build/releases/latest).
 Before the first one, take `main` with

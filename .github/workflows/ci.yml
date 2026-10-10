@@ -44,6 +44,12 @@ jobs:
       - name: Check
         run: nix develop --command just check
 
+      # `just check` runs cargo inside the dev shell and never builds the Nix
+      # package, so a lockfile the vendoring rejects would pass it. The flake
+      # check builds the package `nix run` installs.
+      - name: Flake check
+        run: nix flake check
+
   oracle:
     name: Oracle
     runs-on: ubuntu-latest
