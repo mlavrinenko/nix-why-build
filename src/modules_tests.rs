@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{INDEX_EXPR, Index, Labels, Listing, Located, Naming, Scope, Sources};
+use super::{Index, Labels, Listing, Located, Naming, Scope, Sources};
 
 fn naming(file: &str, names: &[&str]) -> Naming {
     Naming {
@@ -298,59 +298,6 @@ fn labels_name_files_by_their_flake() {
         labels.label("/etc/nixos/configuration.nix"),
         "/etc/nixos/configuration.nix"
     );
-}
-
-/// The index expression itself, run by the real `nix` against a
-/// configuration built by hand from `builtins` alone.
-#[tokio::test]
-async fn the_index_expression_reads_definitions_and_sources() {
-    let fake = r#"
-      let
-        hello = derivation { name = "hello"; builder = "/bin/sh"; system = "x86_64-linux"; };
-      in {
-        options = {
-          environment.systemPackages.definitionsWithLocations = [
-            { file = "/m/a.nix, via option flake.modules.nixos.a"; value = [ hello ]; }
-            { file = "/m/b.nix"; value = [ "not a package" ]; }
-          ];
-          systemd.services.definitionsWithLocations = [ { file = "/m/a.nix"; value = { sshd = { }; }; } ];
-          environment.etc.definitionsWithLocations = [ { file = "/m/c.nix"; value = { "hello.conf" = { }; }; } ];
-        };
-        config.environment.etc."hello.conf".source = hello;
-      }"#;
-    let expr = format!("({INDEX_EXPR}) ({fake})");
-    let json = crate::eval::nix(&["eval", "--json", "--expr", &expr])
-        .await
-        .expect("nix evaluates the index");
-    let index: Index = serde_json::from_str(&json).expect("an index");
-    let [scope] = index.scopes.as_slice() else {
-        panic!("one scope without home-manager: {index:?}");
-    };
-    let hello = scope
-        .sources
-        .get("environment.etc")
-        .and_then(|etc| etc.entries.get("hello.conf"))
-        .and_then(|drvs| drvs.first())
-        .expect("the etc entry's source");
-    assert!(hello.ends_with("-hello.drv"), "{hello}");
-    assert_eq!(
-        scope.lists.get("environment.systemPackages"),
-        Some(&vec![
-            Listing {
-                file: "/m/a.nix".to_owned(),
-                drvs: vec![hello.clone()]
-            },
-            Listing {
-                file: "/m/b.nix".to_owned(),
-                drvs: vec![]
-            },
-        ])
-    );
-    assert_eq!(
-        scope.attrs.get("systemd.services"),
-        Some(&vec![naming("/m/a.nix", &["sshd"])])
-    );
-    assert_eq!(scope.attrs.get("systemd.timers"), Some(&vec![]));
 }
 
 #[test]

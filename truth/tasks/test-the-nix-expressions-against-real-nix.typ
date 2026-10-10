@@ -27,13 +27,13 @@
     ),
   ),
   assignee: "agent",
-  status: proposed(2026, 10, 10),
+  status: done(2026, 10, 10),
 )
 
 == Problem
 
 + Read `src/index.nix` and `src/counterparts.nix`, then `tests/cli.rs` and the unit tests.
-+ 🔴 Every test fakes `nix` with a shell script that prints canned JSON, so neither expression is ever evaluated by a gate. A typo, a renamed `meta` attribute or an option path nixpkgs moves passes `just check`; the first sign is a tank run where every root says `unknown` or no `wanted by` names a file.
++ 🔴 The CLI tests fake `nix` with a shell script that prints canned JSON. Only two inline tests ran an expression with the real `nix`, on fixtures written as Rust strings: they wrote `.drv` files into the real store, and nothing covered a home-manager user, `pkgsi686Linux` or a `home.file` source. A renamed `meta` attribute or an option path nixpkgs moves passes `just check`; the first sign is a tank run where every root says `unknown` or no `wanted by` names a file.
 
 
 == TO-BE

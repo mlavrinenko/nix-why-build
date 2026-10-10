@@ -1,1 +1,4 @@
 exclude_globs = ["src/main.rs"]
+# The suite is cargo-nextest's: src/nix_tests.rs needs the scratch store that
+# nextest's setup script exports, which `cargo test` would not run.
+test_tool = "nextest"

@@ -1,3 +1,7 @@
+# Setup scripts (see the end of this file) are still an experimental nextest
+# feature.
+experimental = ["setup-scripts"]
+
 # nextest's default profile, so every runner shares one output level rather
 # than each recipe remembering a flag.
 #
@@ -13,3 +17,13 @@
 # whole point of `fail` rather than `none`.
 [profile.default]
 status-level = "fail"
+
+# The tests that evaluate src/*.nix with the real `nix` write derivations; a
+# setup script points them at a scratch store (see src/nix_tests.rs) so the
+# real one stays untouched. The script exports NIX_REMOTE to them alone.
+[scripts.setup.nix-scratch-store]
+command = "tests/support/nix-scratch-store.sh"
+
+[[profile.default.scripts]]
+filter = "test(/::nix_tests::/)"
+setup = "nix-scratch-store"

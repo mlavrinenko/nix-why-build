@@ -9,6 +9,9 @@
   lines (a variable read back later, a `trap`).
 - At the end ensure that `just fix-check` is green.
 - Tests: inline `#[cfg(test)]` units; CLI/integration in `tests/` (`assert_cmd` + `predicates`). `just fix-check` auto-ejects inline tests from oversized files via `ejectest`.
+  `src/nix_tests.rs` runs the real `nix` against `tests/fixtures/` in a scratch
+  store that nextest's setup script provides: run it with `just test`, not
+  `cargo test`.
 - `just check` holds the coverage floor (95% of lines) and the CRAP gate as one
   arm, `just coverage`; `just cover` then `just crap` run them by hand.
   `just cover` uses `cargo-llvm-cov` (not tarpaulin) — it merges child-process
