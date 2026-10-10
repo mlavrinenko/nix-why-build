@@ -56,4 +56,4 @@ groups:
     source:
       Cargo.toml: 92bbc5bbc6d5a8ae0e183b5a5efa3f0fa9e56a1368436d943316d6743a549bf0
     dependents:
-      CHANGELOG.md: 52ef1065d139135902944e0ce39d3ba05493a6ac09874236e2899563c82609de
+      CHANGELOG.md: 6a3108c7990978addb51de87c07a6211e713d332f8998dce24f8a8ff52b106cc

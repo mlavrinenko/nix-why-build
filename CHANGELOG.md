@@ -7,117 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
 ### Added
 
-- `cache::Substituters` asks binary caches, in parallel, whether they serve a
-  store path, and counts a narinfo only when a trusted key signed it.
-- `walk::walk` reads `.drv` files with `nix-derivation` and walks from a toplevel
-  down to what substituters serve, asking only about the outputs a parent
-  wants.
-- `nix-why-build <installable>` prints every package no substituter serves,
-  one per line, with a tally of hidden config glue on stderr; `--json` prints
-  the whole report. NixOS, home-manager and nix-darwin configurations resolve
-  to what they build. `explain()` is the same thing as a library call.
-- After the first substituter misses, the rest are asked at once, and a
-  request stalled past 1.5 s is sent again: the tank walk went from 23.6 s to
-  about 9 s.
-- `roots::split` tells roots (built while every input is served) from
-  cascades (built because an input is), with a shortest chain from each
-  cascade down to each of its roots.
-- The report groups by root: each root, or each group of roots that drag in
-  the same packages, prints with what it drags in. `--json` carries every
-  root with every cascade and its chain.
-- Each root says which options pull it in (`wanted by`): walking up from it,
-  the first glue node on every way to the toplevel names one, like
-  `environment.systemPackages` for `system-path` or `systemd.services.<n>`
-  for `unit-<n>.service`.
-- `wanted by` names the module files that set each option, from one more
-  `nix eval` of the configuration that runs while the caches are asked:
-  `apps/llama-cpp-16gb.nix` for the configuration's own, `<input>:path` for a
-  flake input's. home-manager options resolve per user, units by their real
-  name, `environment.etc` and `home.file` by the entry whose source it is.
-- `diff::Diff` names what differs between a root and its nixpkgs counterpart:
-  attributes added, removed and changed (structured attrs key by key, store
-  hashes ignored), and inputs added, removed or built differently.
-- `counterparts::find` looks roots up in every nixpkgs-like input of the
-  configuration, under a few attribute guesses and `pkgsCuda` for CUDA roots,
-  with each candidate's `meta.unfree`, `meta.broken` and
-  `meta.hydraPlatforms`.
-- Each root says `why` it misses: `fetch`, `overridden` (with the diff against
-  the closest cached counterpart of its version), `unfree`,
-  `not-built-by-hydra`, `newer-than-cache`, `no-counterpart` or `unknown`,
-  each with its evidence. CUDA roots compare against `pkgsCuda`, 32-bit ones
-  against `pkgsi686Linux`.
-- Every dependency comes from crates.io under a permissive license: Cachix's
-  Apache-2.0 `nix-derivation` and `nix-narinfo` parse `.drv` files and
-  narinfos and verify cache signatures, so the crate stays MIT and publishes
-  to crates.io.
-- A derivation with `allowSubstitutes = false` counts as built, as nix builds
-  it even when a cache serves it, and the walk decides its inputs as usual.
-  It is a root of its own with `why local-only` and makes no parent a
-  cascade. `to_build` now equals nix's own dry-run plan on an empty store:
-  1673 derivations on tank, where it had 1469.
-- `just oracle <installable>` diffs `to_build` with `nix build --dry-run` in a
-  scratch store holding only the derivation closure; it prints nothing when
-  they agree.
-- Every `nix` call enables `nix-command` and `flakes` itself, as
-  `nixos-rebuild --flake` does, so a nix with them off in its configuration
-  still works.
-- `nix-why-build .` and any other installable `nix build` accepts work: nix
-  resolves the `.drv` itself with `nix path-info --derivation`, so a flake
-  reference without `#` explains its default package. A configuration with a
-  quoted, dotted name (`.#nixosConfigurations."host.lan"`) resolves to its
-  toplevel and gets its option index.
-- A closed stdout ends the run quietly with exit 0, as `ripgrep` does, so
-  `nix-why-build ... | head` no longer ends in `Error: Broken pipe`. Any other
-  write error still fails.
-- When `nix flake archive` fails, a warning says why (`warning: flake inputs
-  unknown: error: boom`) and each root's `why unknown` reads `the flake inputs
-  could not be listed` instead of blaming the flake for having no nixpkgs input.
-- Local-only roots that drag in nothing named print as one group at the end of
-  the report, `11 local-only: cuda-merged-12.9, gimp-with-plugins-3.0.8, ...`,
-  with one `why` and the merged `wanted by`. On tank the report went from 135
-  lines in 39 groups to 105 lines in 29. `--json` still lists every root.
-- `wanted by` names each option once per group, with the files of every root
-  that sets it: `environment.systemPackages (apps/audiocpp.nix,
-  nixpkgs:nixos/modules/programs/steam.nix +3)` where the option used to
-  fill both slots with a file each.
-- A substituter nix-why-build cannot ask (`s3://`, `ssh-ng://`) is left out,
-  and one it cannot reach (refused, no DNS, no answer twice) is disabled after
-  its first failure, each with one warning; its paths count as misses, as nix
-  treats a cache it cannot reach, so roots stay roots and a dead cache costs
-  one wait per run.
-
-### Changed
-
-- The embedded Nix expression follows `nixfmt` layout, which `just check` now
-  enforces; evaluation is unchanged.
-- The nixpkgs lookup sends its query to nix on stdin, so a mass rebuild with
-  thousands of roots keeps its reasons instead of failing every lookup with
-  `Argument list too long`.
-- The Linux release binaries are static musl builds from the flake
-  (`nix build .#static`), so they start on NixOS, where the glibc binaries
-  built on Ubuntu found no `/lib64/ld-linux`. The Windows binary is gone: nix
-  does not run there.
-- The library exports only `explain`, `Options`, `Error`, `Report` with its
-  `Root`, `Package`, `Requested`, `Cascade` and `Unknown`, `Reason` and
-  `Diff`. The modules behind them (`cache`, `walk`, `roots` and the rest) are
-  private, and the structs and enums are `#[non_exhaustive]`, so a field or a
-  category can be added without a breaking release. Build `Options` with
-  `Options::new` plus `with_substituters`, `with_trusted_keys` and
-  `with_store_dir`.
-- On a terminal, one line on stderr says what the run is waiting on and
-  rewrites itself per phase: `evaluating .#nixosConfigurations.tank`, then
-  `asking 5 caches: level 7, 3210 derivations`, `indexing the configuration's
-  options` while nix finishes that, then `comparing 52 roots with nixpkgs`
-  (only the roots it looks up, and only when there is a flake to look in),
-  and it is gone before the report prints. A pipe or a file gets
-  not one extra byte. `RUST_LOG=info` logs each phase with its duration. As a
-  library, `Options::with_progress` takes a callback that hears each
-  `Progress` phase; the library prints nothing itself.
-- On a terminal the report is colored: root names bold, labels (`why`,
-  `wanted by`, `drags in`) dim, and a color per `why` category, with
-  `overridden` and `unknown` loud and `fetch` and `local-only` quiet. `NO_COLOR`
-  turns it off, `--color auto|always|never` overrides the guess (`| less -R`),
-  and a pipe or a file gets the same plain text as before. `--json` is never
-  colored. As a library, `Report::human_styled` is `human` with ANSI codes.
+- `nix-why-build <installable>` lists what a build compiles because no binary
+  cache serves it. It asks the caches, not your store, so a box that built
+  everything yesterday gets the same answer as a fresh one.
+- It cuts the derivation graph where nix does on an empty store. `just oracle`
+  checks that against `nix build --dry-run`, and CI runs it on every push. On
+  tank both say 1673 derivations.
+- Derivations with `allowSubstitutes = false` count as built, since nix builds
+  them whatever the cache holds.
+- Misses group by root. A root is built while everything it needs is served,
+  and the report shows what it drags in. Roots that drag in the same packages
+  share one entry, and the local-only ones share one at the end.
+- `wanted by` names the options that pull a root in
+  (`environment.systemPackages`, `systemd.services.<name>`, `home.file` and
+  friends) and the module files that set them, `apps/x.nix` for yours and
+  `<input>:path` for a flake input's.
+- `why` says why each root misses, with evidence, or says `unknown` and why.
+  The categories are `local-only`, `fetch`, `overridden` with the attribute
+  diff against nixpkgs, `unfree`, `not-built-by-hydra`, `newer-than-cache` and
+  `no-counterpart`. CUDA roots compare against `pkgsCuda`, 32-bit ones against
+  `pkgsi686Linux`, and a mass rebuild with thousands of roots still gets its
+  reasons.
+- Any installable `nix build` takes works, and so does a `.drv` path. NixOS,
+  home-manager and nix-darwin configurations resolve to what they build,
+  quoted dotted names included.
+- Caches and keys come from `nix config show`, and `--substituter` and
+  `--trusted-key` override them. A narinfo counts only when a trusted key
+  signed it.
+- A cache it can't speak to (`s3://`, `ssh-ng://`) is skipped, and one it
+  can't reach is dropped after the first failure, each with one warning. Its
+  paths count as misses, the way nix treats them.
+- It's quick. Caches are asked in parallel, a stalled request goes out again
+  after 1.5 s, and the option index evaluates while the caches answer. Tank
+  takes under 40 s, most of it nix's own evaluation.
+- On a terminal a progress line on stderr shows the phase it's in, and the
+  report gets colors. `--color` and `NO_COLOR` decide the colors, and a pipe
+  gets plain text either way.
+- `--json` prints the whole report, every cascade with its chain down to its
+  root.
+- It runs on a nix with flakes switched off, and `| head` ends it quietly.
+- As a library, `nix_why_build::explain` returns the same report. It prints
+  nothing, takes an optional progress callback, and exports only what a caller
+  needs, so it can grow without breaking you.
+- Linux release binaries are static, so they run on NixOS. The flake ships
+  `overlays.default`, and `nix build .#static` reproduces the release binary.
+- Every dependency is under a permissive license, so the crate stays MIT.
