@@ -119,7 +119,7 @@ fn capitalize(word: &str) -> String {
         .unwrap_or_default()
 }
 
-/// The expression for `nix eval --impure --json --expr`.
+/// The expression for `nix eval --impure --json --file -`, read from stdin.
 ///
 /// # Errors
 ///
@@ -140,14 +140,44 @@ pub fn expression(
     ))
 }
 
+/// What `find` runs: nix's arguments, and what it reads on stdin. Linux caps
+/// each argument at 128 KiB and a query grows with the roots, so only the
+/// constant part is an argument.
+#[derive(Debug)]
+pub(crate) struct Call {
+    /// The arguments to `nix`.
+    pub args: Vec<String>,
+    /// The standard input to give it.
+    pub stdin: String,
+}
+
+/// The call that looks every root up in every input.
+///
+/// # Errors
+///
+/// When the query does not serialize, which plain strings always do.
+pub(crate) fn call(
+    system: &str,
+    inputs: &[Input],
+    roots: &[Lookup],
+) -> Result<Call, serde_json::Error> {
+    Ok(Call {
+        args: ["eval", "--impure", "--json", "--file", "-"]
+            .map(str::to_owned)
+            .to_vec(),
+        stdin: expression(system, inputs, roots)?,
+    })
+}
+
 /// Looks every root up in every input.
 ///
 /// # Errors
 ///
 /// Why nix failed, or why its output does not parse, as one line.
 pub async fn find(system: &str, inputs: &[Input], roots: &[Lookup]) -> Result<Found, String> {
-    let expr = expression(system, inputs, roots).map_err(|err| err.to_string())?;
-    let json = crate::eval::nix(&["eval", "--impure", "--json", "--expr", &expr])
+    let call = call(system, inputs, roots).map_err(|err| err.to_string())?;
+    let args: Vec<&str> = call.args.iter().map(String::as_str).collect();
+    let json = crate::eval::nix_with_stdin(&args, &call.stdin)
         .await
         .map_err(|err| crate::eval::first_error(&err.to_string()))?;
     serde_json::from_str(&json).map_err(|err| err.to_string())

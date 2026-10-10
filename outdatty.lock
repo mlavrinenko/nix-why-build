@@ -7,13 +7,13 @@ groups:
       src/cache_tests.rs: 14f0da295097aa513ba2f3cd023af86afd1d7058c631ebc1d32dd50d8e903eb3
       src/config.rs: 365b97c11a2d08691e36f72b10930c9b7ef13740bfbe18d7652b4f387010b077
       src/counterparts.nix: 92248c69de292c62d07867860b962e89455fe58e18e9e1bb08b1a76b425405ba
-      src/counterparts.rs: bfc7cb35b699119c2e005a443cba71d84b592d2c8104222478d63e31f0af2770
-      src/counterparts_tests.rs: 54e7423af2e2248bff22d5edc24198e513feb1f3883821f1aa6a81888fdf1a59
+      src/counterparts.rs: 1f5a2db8c5e894be978556943b5004f48102fd3ebb058463d64eecb1e14ff8e9
+      src/counterparts_tests.rs: 845b211163847e356ea546cff33a54e867e2b554adcfbac44754c870fdf54bf1
       src/diff.rs: 1952914afecb8ce419814f72b60017fc6ed3f3fba0b18a21312d104427449f98
       src/diff_tests.rs: a5f3150b94abe644590e1700dc39e6530434dfa0d42dc36b2579b6b70023f503
       src/drv.rs: e9333543a2648f43cbc4750ea99829d701c63cc23a6e0175cd1e88ded94d9d35
       src/drv_tests.rs: 42bb426a32f105c418093c5bce1ee127adada04cad920dbecad6afd626a7298b
-      src/eval.rs: ebd6151ee2f3a1908b856ebf673be6e64c63a842020fcd18100211b6337df222
+      src/eval.rs: 96b15a7923f4102ff66f67b5013e2506f57c865941a497ec2f1fe766e7e7ddd2
       src/human.rs: ea70580067dc965b06e153ec6f5b08d07a8d670b01b069c7c3c97b6e7bbd3395
       src/index.nix: 94d446dcb4715fdcbe262f04af5c3e5d8142d3945ce56b8ece93fcd069a762c8
       src/lib.rs: bbd4d270a461ad513c07c4b085e19e0294db00548bf807a1c10d32ee469f06ca
@@ -22,7 +22,7 @@ groups:
       src/main.rs: 5222128edea6946168c6b80e581b4326c4177d557803cc2c7f6cf62eec940a91
       src/modules.rs: 997b732a6f8045833d63c1ee49a74956fde63285b28c7fb8961a2b723e74f430
       src/modules_tests.rs: 74049811fac1584c662aacbf133301e7e27b257525dd2a9db42d99b405249bad
-      src/nix_counterparts_tests.rs: e1faa6d8b2f4649bd49f87c470ddac639bf82560a6e88e847d5db8cea45656e2
+      src/nix_counterparts_tests.rs: c596f587b2c2d86fc45bd76cc8a664c98930777b94e09c6921400d18a57c69f6
       src/nix_index_tests.rs: 556de95404f9a994ae60249db4d2a509837238c47c835c4b54fae85c5a54eae5
       src/nix_tests.rs: ddc72707c5f050b21933258420ff321b8fe721aaff66bd70df7e17e731a082bf
       src/reason.rs: d186aaf188c67bb32fd4e887ac62d8d59456ca8e2cb0044b828c4cc30caab69a
@@ -49,6 +49,6 @@ groups:
       CONTRIBUTING.md: b05a3b0f6b4e174fda5abe01290ae54be9a477404ea5b057969a7507d8af72a3
   release-notes:
     source:
-      Cargo.toml: ed6c13a236c92abac8f9395e0f7c9204d22a9e449e9f706b7a3381d0c9950a60
+      Cargo.toml: 74484f84fec51315979a51d64391bbe318c987ec9176ed34a6e6837458c459e9
     dependents:
-      CHANGELOG.md: 0671ed107b572a4c0e707b9a112f4c28bbda00e468a9eed3f311789d19914ab4
+      CHANGELOG.md: 55638106b84bc020f15f9626926a05e71bbb8f7b0fb7a49915fe046e300b7423

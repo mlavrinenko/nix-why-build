@@ -92,3 +92,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The embedded Nix expression follows `nixfmt` layout, which `just check` now
   enforces; evaluation is unchanged.
+- The nixpkgs lookup sends its query to nix on stdin, so a mass rebuild with
+  thousands of roots keeps its reasons instead of failing every lookup with
+  `Argument list too long`.

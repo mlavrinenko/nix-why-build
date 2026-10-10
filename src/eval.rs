@@ -1,6 +1,10 @@
 //! Turn an installable into the `.drv` the walk starts from.
 
+use std::process::Stdio;
+
 use nix_derivation::StorePath;
+use tokio::io::AsyncWriteExt as _;
+use tokio::process::ChildStdin;
 
 /// The attribute names of an attribute path: dots separate them, except
 /// inside double quotes (`nixosConfigurations."a.b"` is two names, the second
@@ -106,20 +110,62 @@ pub enum EvalError {
 /// [`EvalError::Spawn`] when nix cannot start, [`EvalError::Failed`] when it
 /// exits non-zero.
 pub async fn nix(args: &[&str]) -> Result<String, EvalError> {
-    let output = tokio::process::Command::new("nix")
-        .args(["--extra-experimental-features", "nix-command flakes"])
+    run("nix", &with_features(args), "").await
+}
+
+/// Runs `nix` with `args`, writes `stdin` to it and returns its stdout. Linux
+/// caps one argument at 128 KiB; stdin has no such limit.
+///
+/// # Errors
+///
+/// As [`nix`].
+pub async fn nix_with_stdin(args: &[&str], stdin: &str) -> Result<String, EvalError> {
+    run("nix", &with_features(args), stdin).await
+}
+
+/// `args` after the flags that enable `nix-command` and `flakes` for one call.
+fn with_features<'a>(args: &[&'a str]) -> Vec<&'a str> {
+    ["--extra-experimental-features", "nix-command flakes"]
+        .into_iter()
+        .chain(args.iter().copied())
+        .collect()
+}
+
+/// Runs `program`, writing `stdin` to it as it reads. A program that exits
+/// without reading all of it is judged by its status and stderr, not by the
+/// broken pipe it leaves.
+async fn run(program: &str, args: &[&str], stdin: &str) -> Result<String, EvalError> {
+    let mut child = tokio::process::Command::new(program)
         .args(args)
-        .output()
-        .await?;
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let pipe = child.stdin.take();
+    let (fed, output) = tokio::join!(feed(pipe, stdin), child.wait_with_output());
+    let output = output?;
     if !output.status.success() {
         return Err(EvalError::Failed {
-            command: format!("nix {}", args.join(" ")),
+            command: format!("{program} {}", args.join(" ")),
             stderr: String::from_utf8_lossy(&output.stderr)
                 .trim_end()
                 .to_owned(),
         });
     }
+    fed?;
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+/// Writes `input` to `pipe` and closes it. A closed read end is not an error
+/// here: the program stopped reading, and its own words say why.
+async fn feed(pipe: Option<ChildStdin>, input: &str) -> std::io::Result<()> {
+    let Some(mut pipe) = pipe else {
+        return Ok(());
+    };
+    match pipe.write_all(input.as_bytes()).await {
+        Err(err) if err.kind() != std::io::ErrorKind::BrokenPipe => Err(err),
+        _ => Ok(()),
+    }
 }
 
 /// The first line of nix's complaint that says `error`, else its first line.
@@ -156,7 +202,7 @@ pub async fn drv_path(installable: &str) -> Result<StorePath, EvalError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{as_drv_path, toplevel_attr};
+    use super::{EvalError, as_drv_path, run, toplevel_attr};
 
     #[test]
     fn maps_configuration_installables_to_what_they_build() {
@@ -249,5 +295,32 @@ mod tests {
             None
         );
         assert_eq!(as_drv_path("nixpkgs#foo.drv"), None);
+    }
+
+    #[tokio::test]
+    async fn a_program_gets_all_of_its_stdin_whatever_the_size() {
+        let input = "x".repeat(3 << 20);
+        let echoed = run("cat", &[], &input).await.expect("cat succeeds");
+        assert!(
+            echoed == input,
+            "{} bytes back for {}",
+            echoed.len(),
+            input.len()
+        );
+        assert_eq!(run("cat", &[], "").await.expect("cat succeeds"), "");
+    }
+
+    #[tokio::test]
+    async fn a_program_that_stops_reading_is_judged_by_its_exit() {
+        let input = "x".repeat(3 << 20);
+        let err = run("sh", &["-c", "echo boom >&2; exit 3"], &input)
+            .await
+            .expect_err("a non-zero exit fails");
+        assert!(
+            matches!(&err, EvalError::Failed { stderr, .. } if stderr == "boom"),
+            "{err:?}"
+        );
+        let said = run("sh", &["-c", "echo ok"], &input).await;
+        assert_eq!(said.expect("an exit of 0 succeeds"), "ok\n");
     }
 }

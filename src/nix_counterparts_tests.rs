@@ -1,4 +1,4 @@
-use crate::counterparts::{Candidate, Found, Input, Lookup, attr_guesses, find};
+use crate::counterparts::{Candidate, Found, Input, Lookup, attr_guesses, call, find};
 use crate::modules::Labels;
 
 use super::{fixture, scratch_store, strings};
@@ -256,4 +256,34 @@ async fn a_nix_failure_is_one_line() {
     .expect_err("a missing path does not import");
     assert!(err.contains("error"), "{err}");
     assert!(!err.contains('\n'), "{err}");
+}
+
+#[tokio::test]
+async fn five_thousand_lookups_evaluate_like_five() {
+    let both = ["", "pkgsCuda"];
+    let mut lookups = vec![lookup("llama-cpp", &both)];
+    lookups.extend((1..4_999).map(|at| lookup(&format!("absent-package-{at}"), &both)));
+    lookups.push(lookup("flask-cors", &both));
+    let inputs = [input("nixpkgs", "nixpkgs")];
+    let query = call("x86_64-linux", &inputs, &lookups).expect("serializes");
+    assert!(
+        query.stdin.len() > 128 * 1024,
+        "{} bytes: more than one argument can hold",
+        query.stdin.len()
+    );
+    let roots = find_in("x86_64-linux", &inputs, &lookups).await.roots;
+    assert_eq!(roots.len(), 5_000);
+    let labelled: Vec<Vec<String>> = roots.iter().map(|found| labels(found)).collect();
+    assert_eq!(
+        labelled.first(),
+        Some(&strings(&[
+            "nixpkgs#llama-cpp",
+            "nixpkgs#pkgsCuda.llama-cpp"
+        ]))
+    );
+    assert_eq!(
+        labelled.last(),
+        Some(&strings(&["nixpkgs#python3Packages.flask-cors"]))
+    );
+    assert!(labelled.iter().skip(1).take(4_998).all(Vec::is_empty));
 }
