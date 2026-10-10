@@ -18,6 +18,7 @@ require_tracked:
   - "AGENTS.md"
   - "Cargo.toml"
   - "Justfile"
+  - "scripts/**"
   - "flake.nix"
 groups:
   # The README shows the CLI, its output and the library API by example, so
@@ -46,6 +47,7 @@ groups:
     source:
       - flake.nix
       - Justfile
+      - scripts/**
       - .config/nextest.toml
       - .mmz/config.yaml
     dependents:

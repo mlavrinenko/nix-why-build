@@ -44,13 +44,19 @@ groups:
       README.md: fbe0953258dfe4bfc5636347491c8124a55c3325f209946b6959224a8c4ba1d8
   dev-docs:
     source:
-      .config/nextest.toml: 62ff4bbde114658aced2e28b106763419c767b6df9955573e012e7304bab3e23
-      .mmz/config.yaml: ad15c52eed8c4a373516f2ee7bc11c1c6c9115306ca5a98304f1d16016a6dd61
-      Justfile: a642d7aadc7dbc5130b273d6131cde1c4bcbc7506a75516279e9fbb35e138c9c
+      .config/nextest.toml: 367ed9a814800c344a521d1f326dca5072195b9c2c3afd620257b4136e2abb3e
+      .mmz/config.yaml: 5ad66fd4e23e352aec2093e542f95a991fc991ced00d733ab716031a5dc36930
+      Justfile: 36d4abdfc08dee16ef26b7c729f77147131217df2d84f70ab2055ae8dfe5e878
       flake.nix: c8c973239e173bfc3e5023230fdea91e93d1a565efc43ffba06ddd506cb21fad
+      scripts/cover.sh: fc2943107746718e75b3d07092915cb60db0885b0f726fdc3b566ab4aeb292af
+      scripts/crap.sh: ff662ab839dffe961dcee086f59b550e2e7a84d42819b60b56ec9080a83a3a5f
+      scripts/eject.sh: 9fed177e7d200c062466f4c317c452280af8072de914f1eeb9ceb2a33cc97621
+      scripts/oracle.sh: 227aec12391f2b7bb2735a36b6ff1c2b6a2e1da400e12db00f630571430e1539
+      scripts/quiet.sh: 7e05bb0d5be2959ede47c7eb33b9203e0446702ea178cdb596951df9e8b3fb73
+      scripts/release.sh: 9ca4b58bdfb13c8c83c493442d5523c48baa22a51ef4a58b84e6717e64fab31b
     dependents:
-      AGENTS.md: 76d47a042fd064e18223e5a64ea79597868fc3d17c126c04f6e491c4a616b2ae
-      CONTRIBUTING.md: 02dae126b03344e462e5dc46c040d237da23da5e9ee2f7cc586d15c55807746e
+      AGENTS.md: 1a5cc8356a79f485c0d7e706b8662752690a16e3f03997dca4c073426a606620
+      CONTRIBUTING.md: b58a1c6f0f24d2dcff4ee8db8fcc81b3deba9f178fa4de177e67194dea89051f
   release-notes:
     source:
       Cargo.toml: 92bbc5bbc6d5a8ae0e183b5a5efa3f0fa9e56a1368436d943316d6743a549bf0

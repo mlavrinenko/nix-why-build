@@ -1,179 +1,155 @@
 # Contributing to nix-why-build
 
+## Development
+
+You need [Nix](https://nixos.org/) with flakes. Enter the dev shell with
+`direnv allow` or `nix develop`; it also wires the git hooks. Then:
+
+```bash
+just          # the recipes you need daily
+just --list   # all of them, grouped
+```
+
+Before you send a change, run `just fix-check`: it applies clippy's fixes and
+the formatters, then runs `just check`.
+
 ## Code Style
 
-All clippy lints are set to `deny` level — the project will not compile with violations.
+All clippy lints are set to `deny`, so a violation does not compile. Key
+restrictions:
 
-Key restrictions:
-- No `unwrap()` — use `?` operator or `anyhow`/`thiserror` error handling
-- No `todo!()`, `unimplemented!()`, `unreachable!()` — handle all cases
-- No `unsafe` code
-- No wildcard imports (`use foo::*`)
-- No single-character variable names (minimum 2 characters)
-- Functions: max 70 lines, max 5 arguments, max cognitive complexity 20
+- No `unwrap()`; use `?` with `anyhow` or `thiserror`
+- No `todo!()`, `unimplemented!()`, `unreachable!()`; handle every case
+- No `unsafe`, no wildcard imports (`use foo::*`)
+- Names of at least two characters
+- Functions: at most 70 lines, 5 arguments, cognitive complexity 20
 
 ## Error Handling
 
-- Use `anyhow::Result` for application-level code (binaries, CLI)
-- Use `thiserror::Error` for library error types that callers will match on
-- Propagate errors with `?` — never `unwrap()` or `expect()`
+- `anyhow::Result` in the binary, `thiserror::Error` for library errors callers
+  match on.
+- Propagate with `?`, never `unwrap()` or `expect()`.
 
 ## Project Structure
 
-Keep `main.rs` as a thin entry point — argument parsing, logger init, and a call into
-library code. All logic belongs in `lib.rs` (and its modules). `main.rs` is excluded from
-coverage, so anything there is untested by default.
+`main.rs` stays a thin entry point: argument parsing, logger init and a call
+into the library. Logic belongs in `lib.rs` and its modules. `main.rs` is
+excluded from coverage, so anything there goes untested.
 
 ## Testing
 
-- Unit tests live inline in a `#[cfg(test)] mod tests` block next to the code they exercise.
-- CLI and integration tests live in `tests/` and drive the built binary with
-  [`assert_cmd`](https://docs.rs/assert_cmd) + [`predicates`](https://docs.rs/predicates)
-  (see `tests/cli.rs`).
-- `just test` runs `cargo nextest run` (one process per test; a green run
-  prints only the summary) plus `cargo test --doc`, which nextest skips.
+- Unit tests live inline in a `#[cfg(test)] mod tests` next to their code.
+- CLI and integration tests live in `tests/` and drive the binary with
+  [`assert_cmd`](https://docs.rs/assert_cmd) and
+  [`predicates`](https://docs.rs/predicates), see `tests/cli.rs`.
+- `just test` runs `cargo nextest run`, one process per test, plus
+  `cargo test --doc`, which nextest skips. A green run prints the summary line.
   `just cover` instruments the same runner. The output level lives in
   [.config/nextest.toml](.config/nextest.toml), because `cargo llvm-cov
   nextest` ignores `--status-level` on the command line.
 - `src/nix_tests.rs` evaluates `src/counterparts.nix` and `src/index.nix` with
-  the real `nix` on the fixtures in `tests/fixtures/`, offline. They write
-  `.drv` files, so a nextest setup script (`tests/support/nix-scratch-store.sh`)
-  hands them an in-memory store (`dummy://?read-only=false`) through `NIX_REMOTE`,
-  and they fail under plain `cargo test`. Run them with `just test`.
+  the real `nix` on `tests/fixtures/`, offline. They write `.drv` files, so a
+  nextest setup script (`tests/support/nix-scratch-store.sh`) hands them an
+  in-memory store through `NIX_REMOTE`. They fail under plain `cargo test`.
 - Near the linecop limit, `just fix-check` ejects an inline `#[cfg(test)]`
-  module into a sibling `_tests.rs` via
+  module into a sibling `_tests.rs` with
   [ejectest](https://github.com/mlavrinenko/ejectest).
 
-## Code Coverage
+## Coverage and CRAP
 
 `just cover` enforces 95% line coverage with `cargo-llvm-cov`, which counts
-subprocess e2e tests too. `just check` runs it with the CRAP gate below as
-`just coverage`, so the floor holds on every commit, not only in CI. It starts
-with `cargo llvm-cov clean --workspace` on purpose: without it a long-lived
-checkout scores binaries that no longer exist. `main.rs` is excluded, so keep
-it thin.
-
-## CRAP Gate
+subprocess e2e tests too. It starts with `cargo llvm-cov clean --workspace`,
+or a long-lived checkout keeps scoring binaries that no longer exist.
 
 `just crap` scores each function by the Change Risk Anti-Patterns metric
-(cyclomatic complexity weighted by test coverage) and fails above 30. A global
-coverage threshold can stay green while one branchy, untested function rots;
-CRAP catches that. Fix a flagged function by adding tests or reducing its
-branching. Tune the threshold per repo via `--threshold` or a `.cargo-crap.toml`.
+(complexity weighted by coverage) and fails above 30. A global floor can stay
+green while one branchy, untested function rots; CRAP catches that. Fix a
+flagged function with tests or less branching, never a higher threshold. It
+refuses a stale `target/coverage/lcov.info`, since a function with no coverage
+record grades as 0%. `tests/**` and `*_tests.rs` are excluded.
 
-It refuses a stale `target/coverage/lcov.info`, since a function with no
-coverage record grades as 0%, so run `just cover` first (`just coverage` runs
-both in order). `tests/**` and ejected `*_tests.rs` are excluded so the gate
-never grades test helpers. `--min 30` keeps a green run quiet.
+`just check` runs both, in order, as `just coverage`. Both are silent on a pass.
 
 ## File Size Limits
 
-- Rust files: 500 lines max
-- Markdown files: 200 lines max
-
-When a file exceeds the limit, split it into modules or separate documents.
+Rust files stop at 500 lines, Markdown at 200. Split a file that grows past
+its limit into modules or separate documents.
 
 ## Dependency Drift
 
-[outdatty.yaml](outdatty.yaml) declares groups that couple `source` files to the
-`dependents` that must stay in sync with them — for example, CLI code to the docs
-that describe it. `just check` runs `outdatty check`, which fails when a source
-changed but its dependents were not re-confirmed.
-
-After editing a source, review the listed dependents, update them as needed, then
-run `just outdatty-update` to record the new state into `outdatty.lock` and commit
-it. Add or adjust groups whenever you introduce files that must move together.
+[outdatty.yaml](outdatty.yaml) couples `source` files to the `dependents` that
+must follow them, like the CLI code and the README. `just check` fails when a
+source changed and its dependents were not re-confirmed. Review them, update
+what needs it, run `just outdatty-update` and commit `outdatty.lock` with the
+change. Add a group for any new files that must move together.
 
 ## Memoized Gates
 
-Every arm of `just check` runs as `just mmz <subgate>`, which is
-`mmz just <subgate>`. [mmz](https://github.com/mlavrinenko/mmz) hashes the rule's
-declared inputs and skips the command when they are byte-for-byte identical to
-the last run that *succeeded*, so a no-op `just check` re-run costs nothing and a
-one-file change re-runs only the arms that declare that file.
+Every arm of `just check` runs as `just mmz <arm>`, which is `mmz just <arm>`.
+[mmz](https://github.com/mlavrinenko/mmz) skips an arm while its declared
+inputs match the last run that passed, so a no-op re-run costs nothing and a
+one-file change re-runs only the arms that read it. Rules and their inputs
+live in [.mmz/config.yaml](.mmz/config.yaml).
 
-Rules and their input scopes live in [.mmz/config.yaml](.mmz/config.yaml). Things
-worth knowing:
+- A new arm needs a rule there. mmz rejects a command that matches no rule.
+- Rules match by prefix on whole argv tokens. `just test` is `match: exact`,
+  so a filtered `just test <filter>` never records the full-suite run.
+- `mmz --is-fresh --tag gate` asserts that every `gate`-tagged rule passed
+  against this worktree, running nothing. A tag that matches no rule passes
+  vacuously, so a new arm must carry it. `just cover` and `just crap` are
+  untagged; `just coverage` carries them.
+- There is no `--force`. Touch an input or delete the record under
+  `.mmz/cache/` to re-run a fresh rule.
+- `just status` prints each rule's freshness.
+- A brand-new clone has no `Cargo.lock` until the first `just check` writes
+  it, so the second run misses once more. That's not a broken cache.
 
-- Adding an arm to `just check` means adding its rule to that manifest. mmz's
-  default `strict` setting rejects an invocation matching no rule (and one whose
-  rule resolves to zero files), so a missing rule is an error, not a silent pass.
-- Rule names match by prefix on whole argv tokens. `just test` is `match: exact`
-  so a filtered `just test <filter>` can never record the full-suite identity.
-- Rules tagged `gate` are the gate set: `mmz --is-fresh --tag gate` asserts every
-  one already passed against this worktree and runs nothing. That is what the
-  pre-commit hook checks (see Git Hooks below), and what to wire into a task
-  tracker's close gate. `just coverage`, `doc`, `nix-fmt` and `actionlint` carry
-  the tag too; `just cover` and `just crap` are untagged — memoized, never
-  blocking. A tag matching no rule asserts nothing and passes
-  vacuously, so any new gate arm must carry the `gate` tag to be covered.
-- There is no `--force`. To re-run a fresh rule, touch one of its inputs or
-  delete its record under `.mmz/cache/` (gitignored via `.mmz/.gitignore`).
-- `just status` (`mmz --status`) prints every rule's freshness as a table — what
-  a `just check` would re-run, and whether the pre-commit hook would pass now.
-- In a brand-new clone there is no `Cargo.lock` yet; cargo writes it during the
-  first `just check`, so the arms that declare it record a pre-lock digest and
-  miss once more on the second run. "A no-op re-run is a full hit" holds from
-  the third run onward. Nothing to fix — just do not read that first miss as a
-  broken cache.
-
-## Rustdoc, Nix and Workflow Gates
+## Rustdoc, Nix and Workflows
 
 `just doc` builds rustdoc with `-D warnings`, so a broken intra-doc link fails
-before docs.rs renders it. `just nix-fmt` runs `nixfmt --check` over every
-tracked `.nix` file, and `just fmt` rewrites them. `just actionlint` lints
-`.github/workflows`, including the shell in each `run:` step.
+before docs.rs renders it. `just nix-fmt` checks every tracked `.nix` file and
+`just fmt` rewrites them. `just actionlint` lints `.github/workflows`,
+including the shell in each `run:` step.
 
-CI's check job also runs `nix flake check`, which builds the package `nix run`
-installs; `just check` only runs cargo in the dev shell and would miss a
-lockfile the Nix vendoring rejects. `nix fmt` formats with `nixfmt`.
+CI's check job also runs `nix flake check`, which builds the package
+`nix run` installs, so a `Cargo.lock` the Nix vendoring rejects fails there.
 
 ## Copy-Paste Gate
 
 `just check-dry` runs [jscpd](https://github.com/kucherenko/jscpd) over `src/`
-and `tests/` and fails on any duplicated Rust block of >=70 tokens. Fix a
-finding by extracting a shared helper — never by shuffling tokens until the
-detector loses the scent.
+and `tests/` and fails on any duplicated Rust block of 70+ tokens. Fix it by
+extracting a shared helper, never by shuffling tokens until the detector
+loses the scent.
 
 ## Dependency Audits
 
 `just deny` runs `cargo-deny` (advisories, licenses, bans). It needs network,
-so it runs in its own CI job, not in `just check`. `--hide-inclusion-graph`
-keeps a green run to three lines; drop it to chase one finding. The policy is
+so it runs in its own CI job, not in `just check`. The policy is
 [deny.toml](deny.toml): add a license to `licenses.allow` deliberately, never
-to silence a finding.
-
-`just outdated` lists newer dependency versions. Also network-bound and never
-a gate.
+to silence a finding. `just outdated` lists newer dependency versions, also
+network-bound and never a gate.
 
 ## MSRV
 
-The `rust-version` field in `Cargo.toml` declares the minimum supported Rust
-version. CI verifies it compiles on that version in a separate job.
+`rust-version` in `Cargo.toml` is the minimum supported Rust. A CI job builds
+on it.
 
 ## Mutation Testing
 
-`cargo-mutants` helps find assertion gaps by injecting bugs and checking that
-tests catch them. Two recipes:
-
-- `just mutants-diff` — sweeps only mutants touched by this branch's diff
-  against `main` (the daily driver).
-- `just mutants` — full-file sweep (a dev aid, never a gate).
-
-A surviving `MISSED` mutant is a real assertion gap: a line covered but not
-pinned by any assertion.
+`cargo-mutants` injects bugs and checks that the tests catch them.
+`just mutants-diff` sweeps what this branch changed against `main`, the daily
+driver. `just mutants` sweeps every file, slow and never a gate. A surviving
+`MISSED` mutant is a line covered but pinned by no assertion.
 
 ## Git Hooks
 
-Both hooks live in `.githooks/`, tracked by git. `just install-hooks` runs
-`git config core.hooksPath .githooks`; the dev-shell `shellHook` runs it on
-entry, so a fresh clone's first `nix develop` wires them.
+Both hooks live in `.githooks/`. The dev shell runs `just install-hooks` on
+entry, which points `core.hooksPath` there.
 
-- `pre-commit` runs `mmz --is-fresh --tag gate`: every gate-tagged rule in
-  `.mmz/config.yaml` already passed against this worktree. It runs nothing.
+- `pre-commit` runs `mmz --is-fresh --tag gate`, so it runs no gate itself.
 - `commit-msg` runs `mt check --commit-msg` (see Tasks).
 
-Bypass a single commit with `git commit --no-verify`.
+Skip them for one commit with `git commit --no-verify`.
 
 ## Tasks
 
@@ -187,9 +163,3 @@ says what the tool is for; every open task gives each goal a verdict.
 - `mt done` refuses until `just check` passed. Task files sit outside the
   gate's scope, so one `mt done leaf milestone` closes both; the commit-msg
   hook validates the staged tasks.
-
-## Submitting Changes
-
-1. Run `just check`: fmt, clippy, tests, coverage and CRAP, rustdoc, nixfmt,
-   actionlint, file size, drift, copy-paste, tasks
-2. Run `just fmt` to format Rust and Nix

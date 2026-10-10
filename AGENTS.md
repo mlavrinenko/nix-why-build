@@ -3,10 +3,10 @@
 ## Agent Rules
 
 - See and use [Justfile](Justfile). Add any repeatable and regular operations there.
-  `set shell` already gives every recipe line `bash -eo pipefail`, so a new recipe
-  needs no `#!/usr/bin/env bash` + `set -eo pipefail` preamble. just runs each line
-  in a fresh shell though — add a shebang only when the body needs one shell across
-  lines (a variable read back later, a `trap`).
+  Every recipe gets a one-line `[doc()]` and a `[group()]`: `daily` is what bare
+  `just` lists, `gate` the arms of `just check`, `extra` the rest. A body over
+  ~5 lines goes to `scripts/`. `set shell` gives every line `bash -eo pipefail`,
+  each in a fresh shell.
 - At the end ensure that `just fix-check` is green.
 - Tests: inline `#[cfg(test)]` units; CLI/integration in `tests/` (`assert_cmd` + `predicates`). `just fix-check` auto-ejects inline tests from oversized files via `ejectest`.
   `src/nix_tests.rs` runs the real `nix` against `tests/fixtures/` in an in-memory
@@ -42,9 +42,9 @@
   allow-list deliberately; never to silence a finding. `just outdated`
   (cargo-outdated) is network-bound too and reports newer upstream releases;
   it is a dev aid, never a gate.
-- `just test` gates the suite on cargo-nextest with `--status-level fail` — a
-  green run prints only the summary, a red one prints each failure's full
-  output — plus a `cargo test --doc` pass, because nextest does not run
+- `just test` gates the suite on cargo-nextest — a green run prints only the
+  summary line, a red one prints each failure's full output — plus a
+  `cargo test --doc` pass, because nextest does not run
   doctests. `just cover` instruments that same runner via `cargo llvm-cov
   nextest`, so a test cannot pass under the gate and fail under coverage (or
   the reverse) with nothing saying so.
