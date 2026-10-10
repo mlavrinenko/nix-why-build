@@ -1,4 +1,4 @@
-use nix_compat::store_path::StorePath;
+use nix_derivation::StorePath;
 
 use crate::fixture_tests::{DrvSpec, FakeCache as Fake, FakeStore, absent_drv, spec};
 

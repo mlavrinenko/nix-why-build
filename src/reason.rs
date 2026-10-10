@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use nix_compat::store_path::StorePath;
+use nix_derivation::StorePath;
 use serde::Serialize;
 
 use crate::counterparts::Candidate;

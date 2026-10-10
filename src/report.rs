@@ -1,6 +1,6 @@
 //! What [`crate::explain`] returns. [`crate::human`] prints it.
 
-use nix_compat::store_path::StorePath;
+use nix_derivation::StorePath;
 use serde::Serialize;
 
 use crate::cache::Substituters;

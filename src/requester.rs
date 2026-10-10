@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use nix_compat::store_path::StorePath;
+use nix_derivation::StorePath;
 
 use crate::walk::Graph;
 

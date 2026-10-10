@@ -7,7 +7,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use nix_compat::store_path::StorePath;
+use nix_derivation::StorePath;
 use serde::Serialize;
 
 use crate::drv::{Attrs, DrvError, read_attrs};
@@ -100,7 +100,7 @@ fn inputs(attrs: &Attrs) -> BTreeMap<String, BTreeSet<String>> {
         inputs
             .entry(input.name().trim_end_matches(".drv").to_owned())
             .or_default()
-            .insert(input.to_string());
+            .insert(input.to_basename());
     }
     inputs
 }

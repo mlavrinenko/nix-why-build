@@ -27,7 +27,14 @@
     ),
   ),
   assignee: "max",
-  status: proposed(2026, 10, 10),
+  status: done(
+    2026,
+    10,
+    10,
+  )[every dependency is on crates.io; just release publishes],
+  links: related(
+    "decide-between-gpl-3-0-nix-compat-and-the-apache-2-0-cachix-parsers.typ",
+  )[the parser switch is what opened crates.io],
 )
 
 == Problem
@@ -49,6 +56,16 @@ left in a closing report no one rereads. It belongs in
 == TO-BE
 
 - 🟢 A release path exists: snix publishes `nix-compat`, or this crate vendors the few parsers it uses, or releases ship as git tags and Nix packages only.
+
+
+== Decision
+
+Release through `just release`, now that nothing is git-only. Switching to Cachix's `nix-derivation` and `nix-narinfo` (the related decision) left every dependency on crates.io.
+
+- crates.io: `cargo publish --dry-run --allow-dirty --locked` ends in `aborting upload due to dry run`; `release.yml` publishes on the tag.
+- GitHub releases: `release.yml` builds the binaries on the same tag.
+- Flake: `flake.nix` drops the `nix-compat` `outputHashes` entry, so `nix build` vendors from `Cargo.lock` alone, and it builds.
+- `README.md` and `www/index.html` install with `cargo install nix-why-build`.
 
 
 == Changes

@@ -121,11 +121,13 @@ for root in &report.roots {
 
 ```bash
 nix run github:mlavrinenko/nix-why-build -- .#nixosConfigurations.tank
-cargo install --git https://github.com/mlavrinenko/nix-why-build
+cargo install nix-why-build
 ```
 
-Not on crates.io yet, since it depends on snix's `nix-compat`, which lives on
-git only.
+Every release also lands on crates.io and as a binary on the
+[releases page](https://github.com/mlavrinenko/nix-why-build/releases/latest).
+Before the first one, take `main` with
+`cargo install --git https://github.com/mlavrinenko/nix-why-build`.
 
 ## Development
 

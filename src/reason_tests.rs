@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use nix_compat::store_path::StorePath;
+use nix_derivation::StorePath;
 
 use crate::counterparts::Candidate;
 use crate::drv::{Drv, read};

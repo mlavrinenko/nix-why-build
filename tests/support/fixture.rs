@@ -5,10 +5,11 @@ use std::cell::Cell;
 use std::fmt::Write as _;
 use std::path::Path;
 
-use nix_compat::narinfo::{NarInfo, parse_keypair};
-use nix_compat::nixbase32;
-
-use nix_compat::store_path::StorePath;
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD;
+use ed25519_dalek::{Signer as _, SigningKey};
+use nix_derivation::{StoreDir, StorePath, nixbase32};
+use nix_narinfo::NarInfo;
 
 /// One derivation to write. Built with [`spec`], then refined field by field.
 #[derive(Clone, Debug, Default)]
@@ -82,33 +83,30 @@ impl FakeStore {
 
     /// Writes `spec` as a `.drv` file and returns its store path.
     pub fn add(&self, spec: &DrvSpec) -> StorePath {
-        let drv = StorePath::from_name_and_digest_fixed(
-            &format!("{}.drv", spec.name),
-            self.next_digest(),
-        )
-        .expect("valid drv path");
-        std::fs::write(self.dir().join(drv.to_string()), self.aterm(spec)).expect("write drv");
+        let drv = StorePath::from_parts(self.next_digest(), &format!("{}.drv", spec.name))
+            .expect("valid drv path");
+        std::fs::write(self.dir().join(drv.to_basename()), self.aterm(spec)).expect("write drv");
         drv
     }
 
     /// Writes raw bytes under a `.drv` name, for parse failures.
     pub fn add_raw(&self, name: &str, bytes: &[u8]) -> StorePath {
-        let drv = StorePath::from_name_and_digest_fixed(&format!("{name}.drv"), self.next_digest())
+        let drv = StorePath::from_parts(self.next_digest(), &format!("{name}.drv"))
             .expect("valid drv path");
-        std::fs::write(self.dir().join(drv.to_string()), bytes).expect("write drv");
+        std::fs::write(self.dir().join(drv.to_basename()), bytes).expect("write drv");
         drv
     }
 
     /// The output path `add` gave `output` of the derivation at `drv`.
     pub fn output(&self, drv: &StorePath, output: &str) -> StorePath {
-        let bytes = std::fs::read(self.dir().join(drv.to_string())).expect("read drv");
-        let parsed = nix_compat::derivation::UnverifiedDerivation::from_aterm_bytes(&bytes)
-            .expect("parse drv");
-        parsed
-            .outputs()
-            .iter()
-            .find(|(name, _)| name.as_str() == output)
-            .map(|(_, path)| path.clone())
+        let bytes = std::fs::read(self.dir().join(drv.to_basename())).expect("read drv");
+        let name = drv.name().strip_suffix(".drv").expect("a drv name");
+        nix_derivation::Derivation::from_aterm_bytes(&bytes, name)
+            .expect("parse drv")
+            .resolved_outputs()
+            .expect("output paths")
+            .remove(output)
+            .and_then(|out| out.path)
             .expect("output exists")
     }
 
@@ -122,12 +120,9 @@ impl FakeStore {
             } else {
                 format!("-{output}")
             };
-            let path = StorePath::from_name_and_digest_fixed(
-                &format!("{}{suffix}", spec.name),
-                self.next_digest(),
-            )
-            .expect("valid output path")
-            .to_absolute_path();
+            let path = StorePath::from_parts(self.next_digest(), &format!("{}{suffix}", spec.name))
+                .expect("valid output path")
+                .to_absolute_path();
             let (algo, hash) = if spec.fixed {
                 ("sha256", "0".repeat(64))
             } else {
@@ -185,8 +180,7 @@ fn quote(text: &str) -> String {
 
 /// A store path that no fake store wrote, for a dangling reference.
 pub fn absent_drv(name: &str) -> StorePath {
-    StorePath::from_name_and_digest_fixed(&format!("{name}.drv"), [0xee; 20])
-        .expect("valid drv path")
+    StorePath::from_parts([0xee; 20], &format!("{name}.drv")).expect("valid drv path")
 }
 
 /// Signs narinfos in a test cache.
@@ -201,13 +195,20 @@ pub fn narinfo(path: &StorePath, secret: Option<&str>) -> String {
         path.to_absolute_path(),
         nixbase32::encode(&[7; 32]),
     );
-    let mut info = NarInfo::parse(&text).expect("valid narinfo");
     let Some(secret) = secret else {
-        return info.to_string();
+        return text;
     };
-    let (signer, _) = parse_keypair(secret).expect("valid keypair");
-    info.add_signature(&signer);
-    info.to_string()
+    let info: NarInfo = text.parse().expect("valid narinfo");
+    let fingerprint = info.fingerprint(&StoreDir::default());
+    let (name, keypair) = secret.split_once(':').expect("name:base64 secret");
+    let keypair: [u8; 64] = STANDARD
+        .decode(keypair)
+        .expect("base64 secret")
+        .try_into()
+        .expect("64-byte keypair");
+    let signer = SigningKey::from_keypair_bytes(&keypair).expect("valid keypair");
+    let signature = signer.sign(fingerprint.as_bytes()).to_bytes();
+    format!("{text}Sig: {name}:{}\n", STANDARD.encode(signature))
 }
 
 pub fn narinfo_name(path: &StorePath) -> String {

@@ -86,3 +86,27 @@ fn a_floating_output_is_a_parse_error() {
     let err = read(store.dir(), &path).expect_err("floating output");
     assert!(matches!(err, DrvError::Parse { .. }), "{err}");
 }
+
+#[test]
+fn attrs_keep_structured_json_and_drop_output_paths() {
+    let store = FakeStore::new();
+    let json = r#"{"pname":"x","outputs":{"out":"y"}}"#;
+    let lib = store.add(&spec("lib"));
+    let path = store.add(
+        &spec("x-1")
+            .outputs(&["out", "dev"])
+            .env("__json", json)
+            .env("cmakeFlags", "-DX=1")
+            .input(&lib, &["out"]),
+    );
+    let attrs = super::read_attrs(store.dir(), &path).expect("readable drv");
+    assert_eq!(
+        attrs.env,
+        BTreeMap::from([
+            ("__json".to_owned(), json.to_owned()),
+            ("cmakeFlags".to_owned(), "-DX=1".to_owned()),
+            ("name".to_owned(), "x-1".to_owned()),
+        ])
+    );
+    assert_eq!(attrs.inputs, BTreeSet::from([lib]));
+}

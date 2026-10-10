@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use nix_compat::store_path::StorePath;
+use nix_derivation::StorePath;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -15,7 +15,7 @@ const ROGUE: &str = "rogue-1:WSWrsHVFjRnBaZytl7Cdh0eHb6zbSz9y24G6xtmQbVWvi0KYP2v
 const FORGED: &str = "test-cache-1:lt2k779oTCU/mF2pbGitQK2tcmjqAMhi9KRBA5s7Dkg54t8HZgNEyhYbmGfTmyfSgLV6C6yQZrm6zMjxsTGkUQ==";
 
 fn store_path(seed: u8, name: &str) -> StorePath {
-    StorePath::from_name_and_digest_fixed(name, [seed; 20]).expect("valid store path")
+    StorePath::from_parts([seed; 20], name).expect("valid store path")
 }
 
 fn substituters(urls: &[String], require_sigs: bool) -> Substituters {

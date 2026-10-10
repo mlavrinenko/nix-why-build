@@ -5,7 +5,7 @@
 
 use std::collections::{HashMap, VecDeque};
 
-use nix_compat::store_path::StorePath;
+use nix_derivation::StorePath;
 
 use crate::walk::Graph;
 
@@ -47,7 +47,7 @@ fn by_name(graph: &Graph, left: &StorePath, right: &StorePath) -> std::cmp::Orde
     graph
         .name(left)
         .cmp(graph.name(right))
-        .then_with(|| left.to_string().cmp(&right.to_string()))
+        .then_with(|| left.to_basename().cmp(&right.to_basename()))
 }
 
 /// Breadth-first from `start` over build inputs: the first time a root is

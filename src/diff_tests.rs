@@ -21,7 +21,7 @@ fn store_hashes_inside_values_do_not_count() {
     let store = FakeStore::new();
     let blas_a = store.add(&spec("blas-3"));
     let blas_b = store.add(&spec("blas-3"));
-    let flags = |blas: &nix_compat::store_path::StorePath| {
+    let flags = |blas: &nix_derivation::StorePath| {
         format!("-DBLAS={}", store.output(blas, "out").to_absolute_path())
     };
     let diff = diff(

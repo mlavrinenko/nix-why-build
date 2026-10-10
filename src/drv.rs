@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use nix_compat::store_path::StorePath;
+use nix_derivation::{Derivation, StorePath};
 
 /// What the walk needs from one derivation.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -37,7 +37,7 @@ pub enum DrvError {
         /// The I/O error.
         source: std::io::Error,
     },
-    /// The file is not a derivation `nix-compat` accepts.
+    /// The file is not a derivation `nix-derivation` accepts, or has an output whose path is unknown before the build.
     #[error("parse {path}: {reason}")]
     Parse {
         /// The file.
@@ -54,41 +54,29 @@ pub enum DrvError {
 /// [`DrvError::Read`] when the file cannot be read, [`DrvError::Parse`] when
 /// it is not a derivation with every output path known.
 pub fn read(store_dir: &Path, path: &StorePath) -> Result<Drv, DrvError> {
-    let (builder, outputs) = parse(store_dir, path)?;
-    let env = |key: &str| {
-        builder
-            .environment
-            .get(key)
-            .map(|value| String::from_utf8_lossy(value).into_owned())
-    };
-    let structured =
-        env("__json").and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok());
+    let parsed = parse(store_dir, path)?;
+    let env = environment(&parsed.drv);
+    let structured = parsed.drv.structured_attrs();
     let attr = |key: &str| {
-        env(key).or_else(|| {
+        env.get(key).cloned().or_else(|| {
             structured
-                .as_ref()
                 .and_then(|json| json.get(key))
                 .and_then(serde_json::Value::as_str)
                 .map(str::to_owned)
         })
     };
     Ok(Drv {
-        name: path.name().trim_end_matches(".drv").to_owned(),
+        name: parsed.drv.name().to_owned(),
         pname: attr("pname"),
         version: attr("version"),
-        system: builder.system.clone(),
-        fixed_output: outputs.is_fixed(),
-        outputs: outputs
+        system: parsed.drv.system().to_owned(),
+        fixed_output: parsed.fixed_output,
+        outputs: parsed.outputs,
+        inputs: parsed
+            .drv
+            .input_derivations()
             .iter()
-            .map(|(name, out)| (name.as_str().to_owned(), out.clone()))
-            .collect(),
-        inputs: builder
-            .input_derivations
-            .iter()
-            .map(|(drv, wanted)| {
-                let wanted = wanted.iter().map(|name| name.as_str().to_owned()).collect();
-                (drv.clone(), wanted)
-            })
+            .map(|(drv, wanted)| (drv.clone(), wanted.outputs().clone()))
             .collect(),
         path: path.clone(),
     })
@@ -110,40 +98,66 @@ pub struct Attrs {
 ///
 /// As [`read`].
 pub fn read_attrs(store_dir: &Path, path: &StorePath) -> Result<Attrs, DrvError> {
-    let (builder, _) = parse(store_dir, path)?;
+    let parsed = parse(store_dir, path)?;
     Ok(Attrs {
-        env: builder
-            .environment
-            .iter()
-            .map(|(key, value)| (key.clone(), String::from_utf8_lossy(value).into_owned()))
-            .collect(),
-        inputs: builder.input_derivations.keys().cloned().collect(),
+        env: environment(&parsed.drv),
+        inputs: parsed.drv.input_derivations().keys().cloned().collect(),
     })
 }
 
-fn parse(
-    store_dir: &Path,
-    path: &StorePath,
-) -> Result<
-    (
-        nix_compat::derivation::DerivationBuilder,
-        nix_compat::derivation::Outputs,
-    ),
-    DrvError,
-> {
-    let file = store_dir.join(path.to_string());
+/// A parsed derivation whose every output path is known.
+struct Parsed {
+    drv: Derivation,
+    outputs: BTreeMap<String, StorePath>,
+    fixed_output: bool,
+}
+
+fn parse(store_dir: &Path, path: &StorePath) -> Result<Parsed, DrvError> {
+    let file = store_dir.join(path.to_basename());
+    let invalid = |reason: String| DrvError::Parse {
+        path: file.display().to_string(),
+        reason,
+    };
     let bytes = std::fs::read(&file).map_err(|source| DrvError::Read {
         path: file.display().to_string(),
         source,
     })?;
-    let parsed =
-        nix_compat::derivation::UnverifiedDerivation::from_aterm_bytes(&bytes).map_err(|err| {
-            DrvError::Parse {
-                path: file.display().to_string(),
-                reason: format!("{err:?}"),
-            }
-        })?;
-    Ok(parsed.into_parts())
+    let name = path.name().strip_suffix(".drv").unwrap_or(path.name());
+    let drv = Derivation::from_aterm_bytes(&bytes, name).map_err(|err| invalid(err.to_string()))?;
+    let fixed_output = drv
+        .is_fixed_output()
+        .map_err(|err| invalid(err.to_string()))?;
+    let outputs = drv
+        .resolved_outputs()
+        .map_err(|err| invalid(err.to_string()))?
+        .into_iter()
+        .map(|(output, resolved)| match resolved.path {
+            Some(out) => Ok((output, out)),
+            None => Err(invalid(format!(
+                "output {output} has no path before it is built"
+            ))),
+        })
+        .collect::<Result<_, _>>()?;
+    Ok(Parsed {
+        drv,
+        outputs,
+        fixed_output,
+    })
+}
+
+/// The environment as nix hands it to the builder, less the output paths,
+/// with structured attrs back under `__json`.
+fn environment(drv: &Derivation) -> BTreeMap<String, String> {
+    let lossy = |bytes: &[u8]| String::from_utf8_lossy(bytes).into_owned();
+    drv.environment()
+        .iter()
+        .filter(|(key, _)| !drv.outputs().contains_key(*key))
+        .map(|(key, value)| (key.clone(), lossy(value)))
+        .chain(
+            drv.structured_attrs()
+                .map(|json| ("__json".to_owned(), lossy(json.raw_json()))),
+        )
+        .collect()
 }
 
 #[cfg(test)]

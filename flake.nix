@@ -27,17 +27,12 @@
       in
       {
         # For `nix build` & `nix run`:
-        # buildRustPackage, not naersk: naersk cannot resolve the workspace-
-        # inherited fields of a git dependency (nix-compat, from snix).
         # `just check` gates the suite, so the package build skips it.
         packages.default = pkgs.rustPlatform.buildRustPackage {
           pname = "nix-why-build";
           version = (builtins.fromTOML (builtins.readFile ./Cargo.toml)).package.version;
           src = ./.;
-          cargoLock = {
-            lockFile = ./Cargo.lock;
-            outputHashes."nix-compat-0.1.0" = "sha256-0VzQuIbooV9F2t7EXTZ1TWKCwNdyTFob4BF1SEfGpKM=";
-          };
+          cargoLock.lockFile = ./Cargo.lock;
           doCheck = false;
         };
 

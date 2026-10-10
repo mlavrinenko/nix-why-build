@@ -4,7 +4,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::future::Future;
 use std::path::Path;
 
-use nix_compat::store_path::StorePath;
+use nix_derivation::StorePath;
 
 use crate::cache::Availability;
 use crate::drv::Drv;
@@ -104,7 +104,7 @@ impl Graph {
         drvs.sort_by(|left, right| {
             left.name
                 .cmp(&right.name)
-                .then(left.path.to_string().cmp(&right.path.to_string()))
+                .then(left.path.to_basename().cmp(&right.path.to_basename()))
         });
         drvs
     }
@@ -120,7 +120,7 @@ impl Graph {
                 Verdict::Served | Verdict::Build => None,
             })
             .collect();
-        unknown.sort_by_key(|(path, _)| path.to_string());
+        unknown.sort_by_key(|(path, _)| path.to_basename());
         unknown
     }
 }

@@ -1,6 +1,6 @@
 //! Turn an installable into the `.drv` the walk starts from.
 
-use nix_compat::store_path::StorePath;
+use nix_derivation::StorePath;
 
 /// The attribute a configuration installable builds: a NixOS system's
 /// toplevel, a home-manager activation package, a nix-darwin system. Any

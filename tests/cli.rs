@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use assert_cmd::Command;
-use nix_compat::store_path::StorePath;
+use nix_derivation::StorePath;
 use predicates::prelude::*;
 
 #[path = "support/fixture.rs"]

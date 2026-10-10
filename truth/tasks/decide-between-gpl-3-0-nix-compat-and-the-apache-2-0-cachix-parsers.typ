@@ -27,7 +27,11 @@
     ),
   ),
   assignee: "max",
-  status: proposed(2026, 10, 10),
+  status: done(
+    2026,
+    10,
+    10,
+  )[switched to nix-derivation + nix-narinfo, MIT kept],
   links: related(
     "decide-how-to-release-while-nix-compat-is-git-only.typ",
   )[both are about the nix-compat dependency],
@@ -56,6 +60,31 @@ left in a closing report no one rereads. It belongs in
 == TO-BE
 
 - 🟢 Either the crate moves to GPL-3.0 knowingly, or `src/drv.rs`, `src/cache.rs` and the test fixture switch to the Apache-2.0 parsers and `just deny` passes with the allow-list as is.
+
+
+== Decision
+
+Switch to the Cachix crates and keep MIT. They cover every use nix-compat had, and more:
+
+/ `.drv` ATerm: nix-compat `UnverifiedDerivation::from_aterm_bytes`; now `nix_derivation::Derivation::from_aterm_bytes`, byte-oriented, which also reads `DrvWithVersion("xp-dyn-drv")`.
+/ Structured attrs: nix-compat left `__json` in the environment; now `structured_attrs()` validates it and `raw_json()` gives the exact bytes back.
+/ Outputs: nix-compat knew input-addressed and fixed only, and failed the parse on a floating CA output; `Output` now has `InputAddressed`, `Fixed`, `Floating`, `Deferred` and `Impure`, and `resolved_outputs()` gives each its path or `None`.
+/ Store paths: `nix_derivation::StorePath` has the same name rules and nixbase32 digest order, `from_absolute_path` and `from_parts`.
+/ Narinfo: `nix_narinfo::NarInfo` through `FromStr`, capped at 1 MiB.
+/ Signatures: `TrustedPublicKey`, `fingerprint()` and `has_valid_signature()`, on ed25519-dalek `verify_strict`.
+
+Nothing had to be written by hand. Three nix-compat habits are kept on purpose in `src/drv.rs`: output-path variables leave the diffed environment, `__json` stays in it, and an output with no path before the build is still a parse error. The test fixture signs narinfos with `ed25519-dalek` directly, since `nix-narinfo` only verifies.
+
+Evidence:
+
+```
+$ just deny
+advisories ok, bans ok, licenses ok
+$ cargo publish --dry-run --allow-dirty --locked
+warning: aborting upload due to dry run
+$ nix-why-build --json .#nixosConfigurations.tank   (old binary, then new)
+identical: 1469 to build, 1046 roots
+```
 
 
 == Changes

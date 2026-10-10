@@ -7,7 +7,8 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use nix_compat::store_path::StorePath;
+use nix_derivation::{StoreDir, StorePath};
+use nix_narinfo::{NarInfo, TrustedPublicKey};
 use serde::Serialize;
 
 /// Whether some substituter serves a store path.
@@ -48,7 +49,7 @@ pub enum CacheError {
 #[derive(Debug)]
 pub struct Substituters {
     list: Vec<(String, Location)>,
-    keys: Vec<nix_compat::narinfo::VerifyingKey>,
+    keys: Vec<TrustedPublicKey>,
     require_sigs: bool,
     concurrency: usize,
     patience: std::time::Duration,
@@ -89,7 +90,7 @@ impl Substituters {
         let keys = keys
             .iter()
             .map(|key| {
-                nix_compat::narinfo::VerifyingKey::parse(key).map_err(|err| CacheError::Key {
+                TrustedPublicKey::parse(key).map_err(|err| CacheError::Key {
                     key: key.clone(),
                     reason: err.to_string(),
                 })
@@ -176,7 +177,10 @@ impl Substituters {
     }
 
     async fn probe(&self, location: &Location, path: &StorePath) -> Probe {
-        let file = format!("{}.narinfo", nix_compat::nixbase32::encode(path.digest()));
+        let file = format!(
+            "{}.narinfo",
+            nix_derivation::nixbase32::encode(path.digest())
+        );
         let body = match location {
             Location::Http(base) => self.fetch(&format!("{base}/{file}")).await,
             Location::File(dir) => read_file(&dir.join(file)).await,
@@ -218,24 +222,21 @@ impl Substituters {
     }
 
     fn accept(&self, text: &str, path: &StorePath) -> Probe {
-        let narinfo = match nix_compat::narinfo::NarInfo::parse(text) {
+        let narinfo = match text.parse::<NarInfo>() {
             Ok(narinfo) => narinfo,
             Err(err) => return Probe::Fail(format!("bad narinfo: {err}")),
         };
-        if narinfo.store_path.digest() != path.digest() || narinfo.store_path.name() != path.name()
-        {
-            return Probe::Fail(format!("narinfo is for {}", narinfo.store_path));
+        if narinfo.store_path() != path {
+            return Probe::Fail(format!(
+                "narinfo is for {}",
+                narinfo.store_path().to_basename()
+            ));
         }
-        if !self.require_sigs {
-            return Probe::Hit;
+        if !self.require_sigs || narinfo.has_valid_signature(&StoreDir::default(), &self.keys) {
+            Probe::Hit
+        } else {
+            Probe::Miss
         }
-        let fingerprint = narinfo.fingerprint();
-        let signed = narinfo.signatures.iter().any(|signature| {
-            self.keys
-                .iter()
-                .any(|key| key.name() == *signature.name() && key.verify(&fingerprint, signature))
-        });
-        if signed { Probe::Hit } else { Probe::Miss }
     }
 }
 

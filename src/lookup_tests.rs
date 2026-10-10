@@ -108,7 +108,7 @@ in
 }
 "#;
 
-async fn instantiate(dir: &std::path::Path, attr: &str) -> nix_compat::store_path::StorePath {
+async fn instantiate(dir: &std::path::Path, attr: &str) -> nix_derivation::StorePath {
     let expr = format!(
         "(import {} {{ localSystem = \"x86_64-linux\"; }}).{attr}.drvPath",
         dir.display()
@@ -116,7 +116,7 @@ async fn instantiate(dir: &std::path::Path, attr: &str) -> nix_compat::store_pat
     let drv = crate::eval::nix(&["eval", "--impure", "--raw", "--expr", &expr])
         .await
         .expect("instantiates");
-    nix_compat::store_path::StorePath::from_absolute_path(drv.as_bytes()).expect("a drv path")
+    nix_derivation::StorePath::from_absolute_path(drv.as_bytes()).expect("a drv path")
 }
 
 /// Real nix, a fake nixpkgs input, the real store and a `file://` cache:
