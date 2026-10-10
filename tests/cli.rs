@@ -29,7 +29,11 @@ fn world() -> World {
             .env("version", "1.0")
             .input(&lib, &["out"]),
     );
-    let src = store.add(&spec("src.tar.gz").fixed());
+    let src = store.add(
+        &spec("src.tar.gz")
+            .fixed()
+            .env("url", "https://example.org/src.tar.gz"),
+    );
     let tool = store.add(&spec("tool-2.0").env("pname", "tool").input(&src, &["out"]));
     let unit = store.add(&spec("unit-x.service"));
     let path = store.add(&spec("system-path").input(&app, &["out"]));
@@ -51,8 +55,7 @@ fn world() -> World {
 }
 
 /// What `world()` prints: the fetch root first, since it drags a package in.
-const GROUPED: &str =
-    "src.tar.gz (fetch)\n  drags in tool-2.0\napp-1.0\n  wanted by environment.systemPackages\n";
+const GROUPED: &str = "src.tar.gz (fetch)\n  why fetch: no cache has https://example.org/src.tar.gz\n  drags in tool-2.0\napp-1.0\n  why unknown: no nixpkgs flake input to compare against\n  wanted by environment.systemPackages\n";
 
 fn cmd(world: &World) -> Command {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).expect("binary should build");
@@ -245,11 +248,11 @@ fn flags_alone_still_require_signatures() {
         .args(["--substituter", &url, "--trusted-key", PUBLIC])
         .assert()
         .success()
-        .stdout("lib-1.0\n");
+        .stdout("lib-1.0\n  why unknown: no nixpkgs flake input to compare against\n");
 }
 
 #[test]
-fn a_plain_installable_skips_the_option_index() {
+fn a_plain_installable_skips_the_option_index_but_not_its_flake() {
     let world = world();
     let bin = tempfile::tempdir().expect("tempdir");
     let path = fake_nix(bin.path(), &world.top.to_absolute_path(), "{}", "{}");
@@ -267,7 +270,7 @@ fn a_plain_installable_skips_the_option_index() {
         .stdout(GROUPED);
     let log = std::fs::read_to_string(bin.path().join("args.log")).expect("log");
     assert!(!log.contains("--apply"), "{log}");
-    assert!(!log.contains("flake archive"), "{log}");
+    assert!(log.contains("flake archive --json --dry-run ."), "{log}");
 }
 
 #[test]

@@ -16,54 +16,65 @@ and on a fresh box.
 
 ```console
 $ nix-why-build .#nixosConfigurations.tank
-13 fetches: andale32.exe, arial32.exe, arialb32.exe (+10 more)
-  wanted by environment.systemPackages (nixpkgs:nixos/modules/programs/steam.nix), environment.etc."lightdm/lightdm.conf" (nixpkgs:nixos/modules/services/x11/display-managers/lightdm.nix) (+1 more)
-  drags in corefonts-1, steam-1.0.0.85, steam-run-1.0.0.85
 246 fetches: acorn-8.18.0.tgz, aix-ppc64-0.27.7.tgz, aix-ppc64-0.28.2.tgz (+243 more)
+  why fetch (246)
   wanted by home-manager.users.tank.xdg.configFile."opencode/plugins/octrimmer.js" (apps/agents/opencode/plugins/octrimmer/octrimmer.nix)
   drags in octrimmer-0.1.1-sources, octrimmer-0.1.1
-223 roots: arraydeque-0.5.1, arrayvec-0.7.8, assert_cmd-2.2.2 (+220 more)
-  wanted by environment.systemPackages (kache:packaging/nix/module.nix), systemd.user.services.kache (kache:packaging/nix/module.nix) (+4 more)
-  drags in kache-1.0.0
 russian-trusted-ca-constrained.crt
+  why unknown: it has no pname to look up in nixpkgs
   wanted by home-manager.users.tank.home.packages (home-manager:modules/programs/firefox), home-manager.users.tank.home.file.".mozilla/firefox/974ct1mu.default/search.json.mozlz4" (home-manager:modules/programs/firefox) (+1 more)
   drags in firefox-156.0.1
 ...
 llama-cpp-0.5.0
+  why overridden: vs unstable#pkgsCuda.llama-cpp (cached): postPatch added; buildInputs, cmakeFlags changed; input blas-3 added
   wanted by environment.systemPackages (apps/llama-cpp-16gb.nix), systemd.services.llama-cpp-embed (apps/llama-cpp-16gb.nix, base:apps/gpu-exclusive.nix) (+1 more)
-...
+nh-4.4.2
+  why not-built-by-hydra: nixpkgs#nh has meta.hydraPlatforms = [ ]
+  wanted by environment.systemPackages (nixpkgs:nixos/modules/programs/nh.nix), systemd.services.nh-clean (nixpkgs:nixos/modules/programs/nh.nix)
 514 roots in 29 groups, 45 packages to build, 1424 more without a pname
 ```
 
-A **root** is something no cache serves even though
-everything it needs is served. That's where the miss starts. Everything it
-**drags in** only builds because of it. Fix the root, and the rest comes from
-the cache again. Above, a custom CA cert is why Firefox compiles, and kache's
-223 vendored crates are one line, not 223.
+A **root** is something no cache serves even though everything it needs is
+served. That's where the miss starts. Fix the root and everything it
+**drags in** comes from the cache again. Roots that drag in the same packages
+print as one group, so a custom package's 223 vendored crates are one line.
+Config glue (units, `etc`, `system-path`) is cheap, so it's counted, not
+listed.
 
-`wanted by` names the options that pull a root in, with the module files that
-set them. Your own show as `apps/llama-cpp-16gb.nix`, a flake input's as
-`home-manager:modules/...`. That takes one more `nix eval` of the
-configuration, run while the caches are asked. When a module only mentions a
-package (an `environment.etc` file, a profile script), that's what you get.
-It says where the reference is, not why someone wrote it.
+**wanted by** names the options that pull a root in and the module files that
+set them. Yours print as `apps/llama-cpp-16gb.nix`, a flake input's as
+`home-manager:modules/...`. When a module only mentions a package (an `etc`
+file, a profile script), that's what you get. It shows where the reference
+is, not why someone wrote it.
 
-Roots that drag in the same packages print as one group. Config glue (units,
-`etc`, `system-path`, wrapper scripts) is cheap to build, so it's counted,
-not listed. The tally goes to stderr.
+**why** compares the root with what nixpkgs builds under the same attribute,
+in every nixpkgs input of your flake (and `pkgsCuda` when it uses CUDA).
 
-It takes any of these.
+| why | means |
+| --- | --- |
+| `fetch` | a fixed-output download no cache has; the build fetches it |
+| `overridden` | differs from nixpkgs' own; the diff names the attributes and inputs |
+| `unfree` | identical to nixpkgs', which Hydra skips as unfree |
+| `not-built-by-hydra` | identical, but `meta.broken` or `meta.hydraPlatforms` keeps Hydra off it |
+| `newer-than-cache` | identical, and that nixpkgs' `hello` isn't cached either |
+| `no-counterpart` | no nixpkgs attribute matches its pname (it says what it tried) |
+| `unknown` | none of the above could be shown, and it says why |
+
+It never guesses. No evidence, no category.
+
+It takes any installable. Configurations resolve to what they build.
 
 ```console
-$ nix-why-build .#nixosConfigurations.tank      # builds config.system.build.toplevel
-$ nix-why-build .#homeConfigurations.me         # builds activationPackage
-$ nix-why-build .#darwinConfigurations.mac      # builds system
-$ nix-why-build nixpkgs#hello                   # any installable
-$ nix-why-build /nix/store/...-foo.drv          # or a .drv you already have
+$ nix-why-build .#nixosConfigurations.tank      # config.system.build.toplevel
+$ nix-why-build .#homeConfigurations.me         # activationPackage
+$ nix-why-build .#darwinConfigurations.mac      # system
+$ nix-why-build nixpkgs#hello                   # as is
+$ nix-why-build /nix/store/...-foo.drv          # a .drv you already have
 ```
 
 Caches and keys come from `nix config show`, `extra-substituters` included.
-Flags override them.
+A narinfo only counts when a trusted key signed it, like nix itself. Flags
+override both.
 
 ```console
 $ nix-why-build .#nixosConfigurations.tank \
@@ -71,93 +82,50 @@ $ nix-why-build .#nixosConfigurations.tank \
     --trusted-key cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=
 ```
 
-A narinfo only counts when a trusted key signed it, just like nix itself
-(unless `require-sigs = false`).
+It's quick. On tank (a desktop, five caches) the whole report takes under
+40 s, 17 of them nix's own evaluation of the system. The option index
+evaluates while the caches are asked. `RUST_LOG=info` prints walk timings.
 
-It's quick. On tank (a desktop with five caches) the whole report takes about
-30 s, 17 of them nix's own evaluation of the system. The walk asks the first
-cache alone, since it serves most paths, then the rest at once, and resends a
-request that stalls.
-`RUST_LOG=info` prints the per-level timings.
-
-Want it machine readable? Pass `--json`. Here it is trimmed to one root.
+`--json` prints everything, each cascade with its `chain` down to the root.
 
 ```json
 {
-  "toplevel": "/nix/store/rlnr...-nixos-system-tank-26.05.20260927.cf5e765.drv",
-  "substituters": [
-    "https://cache.nixos.org/",
-    "https://devenv.cachix.org"
+  "name": "llama-cpp-0.5.0",
+  "reason": {
+    "category": "overridden",
+    "against": "unstable#pkgsCuda.llama-cpp",
+    "against_cached": true,
+    "diff": { "added": ["postPatch"], "changed": ["buildInputs", "cmakeFlags"], "inputs_added": ["blas-3"] }
+  },
+  "requested_by": [
+    { "option": "environment.systemPackages", "via": "system-path", "files": ["apps/llama-cpp-16gb.nix"] }
   ],
-  "roots": [
-    {
-      "name": "russian-trusted-ca-constrained.crt",
-      "pname": null,
-      "version": null,
-      "drv": "/nix/store/qnmh...-russian-trusted-ca-constrained.crt.drv",
-      "fixed_output": false,
-      "cascades": [
-        {
-          "name": "firefox-156.0.1",
-          "pname": "firefox",
-          "drv": "/nix/store/a4av...-firefox-156.0.1.drv",
-          "chain": [
-            "firefox-156.0.1",
-            "policies.json",
-            "russian-trusted-ca-constrained.crt"
-          ]
-        }
-      ],
-      "requested_by": [
-        {
-          "option": "home-manager.users.tank.home.file.\".mozilla/native-messaging-hosts\"",
-          "via": "home-manager-files",
-          "via_drv": "/nix/store/r0yc...-home-manager-files.drv",
-          "item": "mozilla-native-messaging-hosts",
-          "item_drv": "/nix/store/59s9...-mozilla-native-messaging-hosts.drv",
-          "files": [
-            "home-manager:modules/misc/mozilla-messaging-hosts.nix"
-          ]
-        }
-      ]
-    }
-  ],
-  "to_build": [
-    {
-      "name": "firefox-156.0.1",
-      "pname": "firefox",
-      "version": "156.0.1",
-      "drv": "/nix/store/a4av...-firefox-156.0.1.drv"
-    }
-  ],
-  "unknown": [],
-  "warnings": []
+  "cascades": [{ "name": "system-path", "chain": ["system-path", "llama-cpp-0.5.0"] }]
 }
 ```
 
-Every cascade carries its `chain` down to the root, so you see the path. Here
-Firefox bakes the cert in through its `policies.json`.
-
-`unknown` lists derivations it couldn't decide, like a `.drv` it can't parse (a
-floating content-addressed one) or a cache that errored instead of answering.
+That's one root, trimmed. The full report also has `toplevel`,
+`substituters`, `to_build`, `unknown` and `warnings`.
 
 ## As a library
 
 ```rust
 let options = nix_why_build::Options::new(".#nixosConfigurations.tank");
 let report = nix_why_build::explain(&options).await?;
-for package in report.to_build.iter().filter(|p| p.pname.is_some()) {
-    println!("{}", package.name);
+for root in &report.roots {
+    println!("{}: {} {}", root.name, root.reason.category(), root.reason.detail());
 }
 ```
 
 ## Install
 
 ```bash
+nix run github:mlavrinenko/nix-why-build -- .#nixosConfigurations.tank
 cargo install --git https://github.com/mlavrinenko/nix-why-build
 ```
 
-Not on crates.io yet, since it depends on snix's `nix-compat`, which lives on git only.
+Not on crates.io yet, since it depends on snix's `nix-compat`, which lives on
+git only.
 
 ## Development
 

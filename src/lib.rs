@@ -7,8 +7,8 @@
 //! # async fn run() -> Result<(), nix_why_build::Error> {
 //! let options = nix_why_build::Options::new(".#nixosConfigurations.tank");
 //! let report = nix_why_build::explain(&options).await?;
-//! for package in report.to_build.iter().filter(|p| p.pname.is_some()) {
-//!     println!("{}", package.name);
+//! for root in &report.roots {
+//!     println!("{}: {} {}", root.name, root.reason.category(), root.reason.detail());
 //! }
 //! # Ok(())
 //! # }
@@ -20,7 +20,10 @@ pub mod counterparts;
 pub mod diff;
 pub mod drv;
 pub mod eval;
+pub mod human;
+pub mod lookup;
 pub mod modules;
+pub mod reason;
 pub mod report;
 pub mod requester;
 pub mod roots;
@@ -113,13 +116,24 @@ pub async fn explain(options: &Options) -> Result<Report, Error> {
     };
     let labelled = async {
         match eval::flake_ref(&options.installable) {
-            Some(flake) if config_attr.is_some() => modules::labels(flake).await.ok(),
-            _ => None,
+            Some(flake) => modules::labels(flake).await.ok(),
+            None => None,
         }
     };
     let (graph, index, labels) = tokio::join!(walked, indexed, labelled);
     let graph = graph?;
-    let mut report = Report::new(&graph, &roots::split(&graph), &substituters);
+    let split = roots::split(&graph);
+    let mut report = Report::new(&graph, &split, &substituters);
+    let (reasons, warnings) = lookup::classify_roots(
+        &options.store_dir,
+        &graph,
+        &split,
+        labels.as_ref(),
+        &substituters,
+    )
+    .await;
+    report.warnings.extend(warnings);
+    report.set_reasons(&reasons);
     match index {
         Some(Ok(index)) => report.locate(&index, &labels.unwrap_or_default()),
         Some(Err(reason)) => report

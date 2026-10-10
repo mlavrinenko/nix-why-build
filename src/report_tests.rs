@@ -27,6 +27,9 @@ fn root(name: &str, pname: Option<&str>, fixed_output: bool, cascades: Vec<Casca
         fixed_output,
         cascades,
         requested_by: vec![],
+        reason: super::Reason::Unknown {
+            because: "test".to_owned(),
+        },
     }
 }
 
@@ -54,7 +57,7 @@ fn a_root_lists_its_named_cascades_and_caps_them_at_six() {
     );
     assert_eq!(
         report.human(),
-        "src.tar.gz (fetch)\n  drags in pkg-1, pkg-2, pkg-3, pkg-4, pkg-5, pkg-6 (+2 more)\n"
+        "src.tar.gz (fetch)\n  why unknown: test\n  drags in pkg-1, pkg-2, pkg-3, pkg-4, pkg-5, pkg-6 (+2 more)\n"
     );
 }
 
@@ -70,7 +73,7 @@ fn six_cascades_print_without_a_remainder() {
     );
     assert_eq!(
         report.human(),
-        "zlib-1.3\n  drags in pkg-1, pkg-2, pkg-3, pkg-4, pkg-5, pkg-6\n"
+        "zlib-1.3\n  why unknown: test\n  drags in pkg-1, pkg-2, pkg-3, pkg-4, pkg-5, pkg-6\n"
     );
 }
 
@@ -88,7 +91,7 @@ fn a_glue_root_with_no_named_cascade_is_not_printed_or_counted() {
         ],
         vec![],
     );
-    assert_eq!(report.human(), "app-1.0\n");
+    assert_eq!(report.human(), "app-1.0\n  why unknown: test\n");
     assert_eq!(
         report.summary(),
         "1 root, 1 package to build, 2 more without a pname\n"
@@ -138,7 +141,7 @@ fn roots_dragging_in_the_same_packages_print_as_one_group() {
     );
     assert_eq!(
         report.human(),
-        "4 roots: anyhow-1.0, arrayvec-0.7.8, axum-0.8.9 (+1 more)\n  drags in kache-1.0.0\nzlib-1.3\n"
+        "4 roots: anyhow-1.0, arrayvec-0.7.8, axum-0.8.9 (+1 more)\n  why unknown: test\n  drags in kache-1.0.0\nzlib-1.3\n  why unknown: test\n"
     );
     assert_eq!(
         report.summary(),
@@ -160,7 +163,7 @@ fn a_group_of_fetches_says_so_and_needs_no_remainder_at_three() {
     );
     assert_eq!(
         report.human(),
-        "3 fetches: andale32.exe, arial32.exe, times32.exe\n  drags in corefonts-1\n"
+        "3 fetches: andale32.exe, arial32.exe, times32.exe\n  why unknown: test\n  drags in corefonts-1\n"
     );
 }
 
@@ -174,7 +177,10 @@ fn standalone_roots_never_group() {
         vec![],
         vec![],
     );
-    assert_eq!(report.human(), "llama-cpp-0.5.0\nnh-4.4.2\n");
+    assert_eq!(
+        report.human(),
+        "llama-cpp-0.5.0\n  why unknown: test\nnh-4.4.2\n  why unknown: test\n"
+    );
 }
 
 #[test]
@@ -189,7 +195,7 @@ fn roots_dragging_in_different_packages_stay_apart() {
     );
     assert_eq!(
         report.human(),
-        "a-src.tar.gz (fetch)\n  drags in a-1\nb-src.tar.gz (fetch)\n  drags in b-1\n"
+        "a-src.tar.gz (fetch)\n  why unknown: test\n  drags in a-1\nb-src.tar.gz (fetch)\n  why unknown: test\n  drags in b-1\n"
     );
 }
 
@@ -233,7 +239,7 @@ fn a_group_says_once_which_options_want_it_and_caps_them_at_two() {
     );
     assert_eq!(
         report.human(),
-        "2 roots: a-1, b-1\n  wanted by environment.systemPackages, home.packages (+2 more)\n  drags in kache-1.0.0\n"
+        "2 roots: a-1, b-1\n  why unknown: test\n  wanted by environment.systemPackages, home.packages (+2 more)\n  drags in kache-1.0.0\n"
     );
 }
 
@@ -255,7 +261,7 @@ fn toplevel_alone_is_not_worth_a_line_but_beside_an_option_it_is() {
     );
     assert_eq!(
         report.human(),
-        "glibc-locales-2.42\nnh-4.4.2\n  wanted by environment.systemPackages, toplevel\n"
+        "glibc-locales-2.42\n  why unknown: test\nnh-4.4.2\n  why unknown: test\n  wanted by environment.systemPackages, toplevel\n"
     );
 }
 
@@ -276,7 +282,7 @@ fn wanted_by_names_up_to_two_files_per_option() {
     let report = report(vec![root], vec![], vec![]);
     assert_eq!(
         report.human(),
-        "llama-cpp-0.5.0\n  wanted by environment.systemPackages (apps/llama.nix), systemd.services.llama (apps/llama.nix, base:apps/gpu.nix +1)\n"
+        "llama-cpp-0.5.0\n  why unknown: test\n  wanted by environment.systemPackages (apps/llama.nix), systemd.services.llama (apps/llama.nix, base:apps/gpu.nix +1)\n"
     );
 }
 
@@ -304,6 +310,43 @@ fn package_lists_come_first_then_units_then_files() {
     );
     assert_eq!(
         report(vec![root], vec![], vec![]).human(),
-        "kache-1.0.0\n  wanted by home-manager.users.tank.home.packages, systemd.user.services.kache (+1 more)\n"
+        "kache-1.0.0\n  why unknown: test\n  wanted by home-manager.users.tank.home.packages, systemd.user.services.kache (+1 more)\n"
+    );
+}
+
+#[test]
+fn a_group_shares_its_reason_or_counts_categories() {
+    let owner = || vec![cascade("octrimmer-0.1.1", Some("octrimmer"))];
+    let with = |name: &str, reason: super::Reason| Root {
+        reason,
+        ..root(name, None, true, owner())
+    };
+    let fetch = |url: &str| super::Reason::Fetch {
+        urls: vec![url.to_owned()],
+    };
+    let shared = report(
+        vec![
+            with("a.tgz", fetch("https://same")),
+            with("b.tgz", fetch("https://same")),
+        ],
+        vec![],
+        vec![],
+    );
+    assert_eq!(
+        shared.human(),
+        "2 fetches: a.tgz, b.tgz\n  why fetch: no cache has https://same\n  drags in octrimmer-0.1.1\n"
+    );
+    let mixed = report(
+        vec![
+            with("a.tgz", fetch("https://a")),
+            with("b.tgz", fetch("https://b")),
+            with("c", super::Reason::NoCounterpart { tried: vec![] }),
+        ],
+        vec![],
+        vec![],
+    );
+    assert_eq!(
+        mixed.human(),
+        "3 fetches: a.tgz, b.tgz, c\n  why fetch (2), no-counterpart (1)\n  drags in octrimmer-0.1.1\n"
     );
 }

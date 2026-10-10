@@ -1,25 +1,16 @@
-//! What [`crate::explain`] returns, and how the CLI prints it.
+//! What [`crate::explain`] returns. [`crate::human`] prints it.
 
 use nix_compat::store_path::StorePath;
 use serde::Serialize;
 
 use crate::cache::Substituters;
+use std::collections::HashMap;
+
 use crate::modules::{Index, Labels};
+use crate::reason::Reason;
 use crate::requester::{Parents, Request, requests};
 use crate::roots::{Chain, Split};
 use crate::walk::Graph;
-
-/// How many cascades a root lists before it says how many more there are.
-const SHOWN_CASCADES: usize = 6;
-
-/// How many options a `wanted by` line names; lines run long with files.
-const SHOWN_OPTIONS: usize = 2;
-
-/// How many module files a `wanted by` entry names.
-const SHOWN_FILES: usize = 2;
-
-/// How many roots a group names before it says how many more there are.
-const SHOWN_GROUP_ROOTS: usize = 3;
 
 /// The answer: the roots of what gets built, the rest it drags in, and
 /// what could not be decided.
@@ -69,6 +60,8 @@ pub struct Root {
     pub cascades: Vec<Cascade>,
     /// The options that pull it in, by option.
     pub requested_by: Vec<Requested>,
+    /// Why no cache has it.
+    pub reason: Reason,
 }
 
 /// One option that pulls a root in.
@@ -151,6 +144,16 @@ impl Report {
         }
     }
 
+    /// Sets each root's reason, by `.drv` path; roots not in `reasons` keep
+    /// theirs.
+    pub fn set_reasons(&mut self, reasons: &HashMap<String, Reason>) {
+        for root in &mut self.roots {
+            if let Some(reason) = reasons.get(&root.drv) {
+                root.reason = reason.clone();
+            }
+        }
+    }
+
     /// Resolves each request against the configuration's option index: the
     /// full option name, and the module files that set it, labelled.
     pub fn locate(&mut self, index: &Index, labels: &Labels) {
@@ -175,226 +178,14 @@ impl Report {
                 .collect();
         }
     }
-
-    /// Shown roots, grouped when they drag in the same named packages: a
-    /// custom package's hundred vendored crates read as one line. A group
-    /// names its first three roots; up to six named cascades follow.
-    #[must_use]
-    pub fn human(&self) -> String {
-        let mut out = String::new();
-        for group in self.groups() {
-            out.push_str(&group.header());
-            out.push('\n');
-            let options = group.options();
-            let options: Vec<&str> = options.iter().map(String::as_str).collect();
-            if let Some(line) = listed("wanted by", &options, SHOWN_OPTIONS) {
-                out.push_str(&line);
-            }
-            let names: Vec<&str> = group
-                .cascades
-                .iter()
-                .map(|cascade| cascade.name.as_str())
-                .collect();
-            if let Some(line) = listed("drags in", &names, SHOWN_CASCADES) {
-                out.push_str(&line);
-            }
-        }
-        out
-    }
-
-    /// Shown roots, grouped by the named packages they drag in. Roots that
-    /// drag in nothing named stand alone. Most named cascades first, then
-    /// the largest group, then by name.
-    #[must_use]
-    pub fn groups(&self) -> Vec<Group<'_>> {
-        let mut groups: Vec<Group<'_>> = Vec::new();
-        for root in self.shown_roots() {
-            let cascades: Vec<&Cascade> =
-                root.cascades.iter().filter(|c| c.pname.is_some()).collect();
-            let same = |group: &&mut Group<'_>| {
-                !cascades.is_empty() && same_packages(&group.cascades, &cascades)
-            };
-            match groups.iter_mut().find(same) {
-                Some(group) => group.roots.push(root),
-                None => groups.push(Group {
-                    roots: vec![root],
-                    cascades,
-                }),
-            }
-        }
-        for group in &mut groups {
-            group
-                .roots
-                .sort_by(|left, right| left.name.cmp(&right.name));
-        }
-        groups.sort_by(|left, right| {
-            right
-                .cascades
-                .len()
-                .cmp(&left.cascades.len())
-                .then_with(|| right.roots.len().cmp(&left.roots.len()))
-                .then_with(|| left.first_name().cmp(right.first_name()))
-        });
-        groups
-    }
-
-    /// Any warnings, one per line, then the one-line tally with the first
-    /// unknown's reason if any.
-    #[must_use]
-    pub fn summary(&self) -> String {
-        let warnings: String = self
-            .warnings
-            .iter()
-            .map(|warning| format!("warning: {warning}\n"))
-            .collect();
-        let roots = self.shown_roots().count();
-        let packages = self.to_build.iter().filter(|p| p.pname.is_some()).count();
-        let rest = self.to_build.len() - packages;
-        let groups = self.groups().len();
-        let mut line = format!("{roots} {}", plural(roots, "root"));
-        if groups < roots {
-            line.push_str(&format!(" in {groups} {}", plural(groups, "group")));
-        }
-        line.push_str(&format!(
-            ", {packages} {} to build, {rest} more without a pname",
-            plural(packages, "package"),
-        ));
-        if let Some(first) = self.unknown.first() {
-            line.push_str(&format!(
-                ", {} unknown (first: {}: {})",
-                self.unknown.len(),
-                first.drv,
-                first.reason
-            ));
-        }
-        line.push('\n');
-        warnings + &line
-    }
-
-    fn shown_roots(&self) -> impl Iterator<Item = &Root> {
-        self.roots
-            .iter()
-            .filter(|root| root.pname.is_some() || named(&root.cascades) > 0)
-    }
 }
 
-/// Roots that drag in the same named packages.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Group<'a> {
-    /// The roots, by name.
-    pub roots: Vec<&'a Root>,
-    /// The named packages they drag in, nearest first.
-    pub cascades: Vec<&'a Cascade>,
-}
-
-impl Group<'_> {
-    /// The options pulling in any of the roots, once each; none when the
-    /// toplevel is all there is to say.
-    fn options(&self) -> Vec<String> {
-        let mut options: Vec<String> = self
-            .roots
-            .iter()
-            .flat_map(|root| &root.requested_by)
-            .map(wanted_by)
-            .collect();
-        options.sort_unstable_by(|left, right| {
-            rank(left).cmp(&rank(right)).then_with(|| left.cmp(right))
-        });
-        options.dedup();
-        if options == ["toplevel"] {
-            options.clear();
-        }
-        options
-    }
-
-    fn first_name(&self) -> &str {
-        self.roots.first().map_or("", |root| root.name.as_str())
-    }
-
-    /// `name` (with ` (fetch)`) for one root; `N roots: a, b, c (+M more)`
-    /// for several, `fetches` when every one is.
-    fn header(&self) -> String {
-        let [root] = self.roots.as_slice() else {
-            let kind = if self.roots.iter().all(|root| root.fixed_output) {
-                "fetches"
-            } else {
-                "roots"
-            };
-            let names: Vec<&str> = self.roots.iter().map(|root| root.name.as_str()).collect();
-            let shown = names.get(..SHOWN_GROUP_ROOTS).unwrap_or(&names);
-            let mut line = format!("{} {kind}: {}", names.len(), shown.join(", "));
-            if names.len() > shown.len() {
-                line.push_str(&format!(" (+{} more)", names.len() - shown.len()));
-            }
-            return line;
-        };
-        if root.fixed_output {
-            format!("{} (fetch)", root.name)
-        } else {
-            root.name.clone()
-        }
-    }
-}
-
-/// Package lists first, since they name the package itself; then units; then
-/// files and anything else, which often only mention it.
-fn rank(option: &str) -> u8 {
-    let option = option.split(" (").next().unwrap_or(option);
-    if option.ends_with("environment.systemPackages") || option.ends_with("home.packages") {
-        0
-    } else if option.contains("systemd.") {
-        1
-    } else {
-        2
-    }
-}
-
-/// `option (file, file +N)`: the option, with up to two files that set it.
-fn wanted_by(request: &Requested) -> String {
-    let Some(shown) = request.files.get(..SHOWN_FILES.min(request.files.len())) else {
-        return request.option.clone();
-    };
-    if shown.is_empty() {
-        return request.option.clone();
-    }
-    let mut files = shown.join(", ");
-    if request.files.len() > shown.len() {
-        files.push_str(&format!(" +{}", request.files.len() - shown.len()));
-    }
-    format!("{} ({files})", request.option)
-}
-
-fn same_packages(left: &[&Cascade], right: &[&Cascade]) -> bool {
-    sorted_drvs(left) == sorted_drvs(right)
-}
-
-fn sorted_drvs<'a>(cascades: &[&'a Cascade]) -> Vec<&'a str> {
-    let mut drvs: Vec<&str> = cascades
-        .iter()
-        .map(|cascade| cascade.drv.as_str())
-        .collect();
-    drvs.sort_unstable();
-    drvs
-}
-
-fn named(cascades: &[Cascade]) -> usize {
+/// How many cascades of `cascades` have a `pname`.
+pub(crate) fn named(cascades: &[Cascade]) -> usize {
     cascades
         .iter()
         .filter(|cascade| cascade.pname.is_some())
         .count()
-}
-
-fn listed(label: &str, names: &[&str], cap: usize) -> Option<String> {
-    if names.is_empty() {
-        return None;
-    }
-    let shown = names.get(..cap).unwrap_or(names);
-    let mut line = format!("  {label} {}", shown.join(", "));
-    if names.len() > shown.len() {
-        line.push_str(&format!(" (+{} more)", names.len() - shown.len()));
-    }
-    line.push('\n');
-    Some(line)
 }
 
 /// Every cascade whose chains reach `root`, with the chain to it.
@@ -444,6 +235,9 @@ fn root(graph: &Graph, path: &StorePath, cascades: &[(&StorePath, &Chain)]) -> R
         fixed_output: drv.is_some_and(|drv| drv.fixed_output),
         cascades,
         requested_by: Vec::new(),
+        reason: Reason::Unknown {
+            because: "not classified".to_owned(),
+        },
     }
 }
 
@@ -464,14 +258,6 @@ fn package(drv: &crate::drv::Drv) -> Package {
         pname: drv.pname.clone(),
         version: drv.version.clone(),
         drv: drv.path.to_absolute_path(),
-    }
-}
-
-fn plural(count: usize, word: &str) -> String {
-    if count == 1 {
-        word.to_owned()
-    } else {
-        format!("{word}s")
     }
 }
 

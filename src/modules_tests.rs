@@ -357,13 +357,17 @@ async fn the_index_expression_reads_definitions_and_sources() {
 fn nixpkgs_inputs_are_those_holding_all_packages() {
     let nixpkgs = tempfile::tempdir().expect("tempdir");
     let other = tempfile::tempdir().expect("tempdir");
+    let nested = tempfile::tempdir().expect("tempdir");
+    std::fs::create_dir_all(nested.path().join("pkgs/top-level")).expect("mkdir");
+    std::fs::write(nested.path().join("pkgs/top-level/all-packages.nix"), "{ }").expect("write");
     let top = nixpkgs.path().join("pkgs/top-level");
     std::fs::create_dir_all(&top).expect("mkdir");
     std::fs::write(top.join("all-packages.nix"), "{ }").expect("write");
     let json = format!(
-        r#"{{"path": "{}", "inputs": {{"unstable": {{"path": "{}"}}, "flake-parts": {{"path": "/nix/store/none"}}}}}}"#,
+        r#"{{"path": "{}", "inputs": {{"unstable": {{"path": "{}"}}, "flake-parts": {{"path": "/nix/store/none"}}, "hm": {{"path": "/nix/store/hm", "inputs": {{"nixpkgs": {{"path": "{}"}}}}}}}}}}"#,
         other.path().display(),
-        nixpkgs.path().display()
+        nixpkgs.path().display(),
+        nested.path().display()
     );
     let labels = Labels::parse(&json).expect("valid");
     assert_eq!(

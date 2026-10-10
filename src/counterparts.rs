@@ -21,8 +21,9 @@ pub struct Input {
 pub struct Lookup {
     /// Attribute paths to try, in order.
     pub attrs: Vec<Vec<String>>,
-    /// Whether to try `pkgsCuda` too.
-    pub cuda: bool,
+    /// The package sets to look in: empty for the top level, or an attribute
+    /// like `pkgsCuda` or `pkgsi686Linux`.
+    pub variants: Vec<String>,
 }
 
 #[derive(Serialize)]

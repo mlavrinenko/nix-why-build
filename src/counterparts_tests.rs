@@ -82,19 +82,19 @@ async fn found() -> super::Found {
     let lookups = [
         Lookup {
             attrs: attr_guesses("llama-cpp"),
-            cuda: true,
+            variants: vec![String::new(), "pkgsCuda".to_owned()],
         },
         Lookup {
             attrs: attr_guesses("corefonts"),
-            cuda: false,
+            variants: vec![String::new()],
         },
         Lookup {
             attrs: attr_guesses("IO-Tty"),
-            cuda: false,
+            variants: vec![String::new()],
         },
         Lookup {
             attrs: vec![path(&["aliased"]), path(&["absent"])],
-            cuda: true,
+            variants: vec![String::new(), "pkgsCuda".to_owned()],
         },
     ];
     find("x86_64-linux", &inputs, &lookups)
@@ -171,7 +171,7 @@ async fn an_input_that_does_not_import_is_skipped() {
         &inputs,
         &[Lookup {
             attrs: attr_guesses("hello"),
-            cuda: false,
+            variants: vec![String::new()],
         }],
     )
     .await

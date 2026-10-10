@@ -228,16 +228,19 @@ impl Labels {
         Ok(Self { roots })
     }
 
-    /// The flake and its inputs that look like nixpkgs: their source holds
-    /// `pkgs/top-level/all-packages.nix`. The flake itself is labelled `self`.
+    /// The flake and its direct inputs that look like nixpkgs: their source
+    /// holds `pkgs/top-level/all-packages.nix`. The flake itself is labelled
+    /// `self`. Inputs of inputs are left out: each costs an import of nixpkgs,
+    /// and what a configuration builds comes from its own inputs.
     #[must_use]
     pub fn nixpkgs_inputs(&self) -> Vec<crate::counterparts::Input> {
         self.roots
             .iter()
-            .filter(|(path, _)| {
-                Path::new(path)
-                    .join("pkgs/top-level/all-packages.nix")
-                    .is_file()
+            .filter(|(path, label)| {
+                !label.contains('/')
+                    && Path::new(path)
+                        .join("pkgs/top-level/all-packages.nix")
+                        .is_file()
             })
             .map(|(path, label)| crate::counterparts::Input {
                 label: if label.is_empty() {

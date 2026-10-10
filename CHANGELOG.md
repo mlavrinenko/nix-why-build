@@ -43,3 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   configuration, under a few attribute guesses and `pkgsCuda` for CUDA roots,
   with each candidate's `meta.unfree`, `meta.broken` and
   `meta.hydraPlatforms`.
+- Each root says `why` it misses: `fetch`, `overridden` (with the diff against
+  the closest cached counterpart of its version), `unfree`,
+  `not-built-by-hydra`, `newer-than-cache`, `no-counterpart` or `unknown`,
+  each with its evidence. CUDA roots compare against `pkgsCuda`, 32-bit ones
+  against `pkgsi686Linux`.

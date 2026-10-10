@@ -26,7 +26,8 @@ let
         config = {
           allowUnfree = true;
           allowBroken = true;
-          allowUnsupportedSystem = true;
+          # No allowUnsupportedSystem: it changes what some packages build
+          # (pkgsCuda.llama-cpp), so the counterpart would match no cache.
           allowInsecurePredicate = _: true;
         };
         overlays = [ ];
@@ -57,12 +58,11 @@ let
         broken = try false (value.meta.broken or false);
         hydraPlatforms = try null (value.meta.hydraPlatforms or null);
       };
-  variants = root: [ "" ] ++ (if root.cuda then [ "pkgsCuda" ] else [ ]);
   candidates =
     root:
     builtins.filter (candidate: candidate != null && candidate.drv != null) (
       builtins.concatMap (
-        set: builtins.concatMap (variant: map (describe set variant) root.attrs) (variants root)
+        set: builtins.concatMap (variant: map (describe set variant) root.attrs) root.variants
       ) sets
     );
 in
