@@ -27,3 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The report groups by root: each root, or each group of roots that drag in
   the same packages, prints with what it drags in. `--json` carries every
   root with every cascade and its chain.
+- Each root says which options pull it in (`wanted by`): walking up from it,
+  the first glue node on every way to the toplevel names one, like
+  `environment.systemPackages` for `system-path` or `systemd.services.<n>`
+  for `unit-<n>.service`.

@@ -4,11 +4,15 @@ use nix_compat::store_path::StorePath;
 use serde::Serialize;
 
 use crate::cache::Substituters;
+use crate::requester::{Parents, Request, requests};
 use crate::roots::{Chain, Split};
 use crate::walk::Graph;
 
 /// How many cascades a root lists before it says how many more there are.
 const SHOWN_CASCADES: usize = 6;
+
+/// How many options a `wanted by` line names.
+const SHOWN_OPTIONS: usize = 3;
 
 /// How many roots a group names before it says how many more there are.
 const SHOWN_GROUP_ROOTS: usize = 3;
@@ -57,6 +61,22 @@ pub struct Root {
     pub fixed_output: bool,
     /// What gets built because of it: nearest first, then by name.
     pub cascades: Vec<Cascade>,
+    /// The options that pull it in, by option.
+    pub requested_by: Vec<Requested>,
+}
+
+/// One option that pulls a root in.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct Requested {
+    /// The option, like `environment.systemPackages`, or `toplevel` when no
+    /// glue node stands between the toplevel and the root.
+    pub option: String,
+    /// The glue derivation that option builds.
+    pub via: String,
+    /// What the option lists on the way to the root.
+    pub item: String,
+    /// That item's `.drv` path.
+    pub item_drv: String,
 }
 
 /// A derivation built only because a root below it is.
@@ -85,10 +105,18 @@ impl Report {
     /// Collects the report from a finished walk and its split.
     #[must_use]
     pub fn new(graph: &Graph, split: &Split, substituters: &Substituters) -> Self {
+        let parents = Parents::of(graph);
         let mut roots: Vec<Root> = split
             .roots
             .iter()
-            .map(|path| root(graph, path, &cascades_of(split, path)))
+            .map(|path| {
+                let mut root = root(graph, path, &cascades_of(split, path));
+                root.requested_by = requests(graph, &parents, path)
+                    .iter()
+                    .map(|request| requested(graph, request))
+                    .collect();
+                root
+            })
             .collect();
         roots.sort_by(|left, right| {
             named(&right.cascades)
@@ -120,12 +148,15 @@ impl Report {
         for group in self.groups() {
             out.push_str(&group.header());
             out.push('\n');
+            if let Some(line) = listed("wanted by", &group.options(), SHOWN_OPTIONS) {
+                out.push_str(&line);
+            }
             let names: Vec<&str> = group
                 .cascades
                 .iter()
                 .map(|cascade| cascade.name.as_str())
                 .collect();
-            if let Some(line) = drags_in(&names) {
+            if let Some(line) = listed("drags in", &names, SHOWN_CASCADES) {
                 out.push_str(&line);
             }
         }
@@ -212,6 +243,23 @@ pub struct Group<'a> {
 }
 
 impl Group<'_> {
+    /// The options pulling in any of the roots, once each; none when the
+    /// toplevel is all there is to say.
+    fn options(&self) -> Vec<&str> {
+        let mut options: Vec<&str> = self
+            .roots
+            .iter()
+            .flat_map(|root| &root.requested_by)
+            .map(|request| request.option.as_str())
+            .collect();
+        options.sort_unstable();
+        options.dedup();
+        if options == ["toplevel"] {
+            options.clear();
+        }
+        options
+    }
+
     fn first_name(&self) -> &str {
         self.roots.first().map_or("", |root| root.name.as_str())
     }
@@ -261,12 +309,12 @@ fn named(cascades: &[Cascade]) -> usize {
         .count()
 }
 
-fn drags_in(names: &[&str]) -> Option<String> {
+fn listed(label: &str, names: &[&str], cap: usize) -> Option<String> {
     if names.is_empty() {
         return None;
     }
-    let shown = names.get(..SHOWN_CASCADES).unwrap_or(names);
-    let mut line = format!("  drags in {}", shown.join(", "));
+    let shown = names.get(..cap).unwrap_or(names);
+    let mut line = format!("  {label} {}", shown.join(", "));
     if names.len() > shown.len() {
         line.push_str(&format!(" (+{} more)", names.len() - shown.len()));
     }
@@ -320,6 +368,16 @@ fn root(graph: &Graph, path: &StorePath, cascades: &[(&StorePath, &Chain)]) -> R
         drv: path.to_absolute_path(),
         fixed_output: drv.is_some_and(|drv| drv.fixed_output),
         cascades,
+        requested_by: Vec::new(),
+    }
+}
+
+fn requested(graph: &Graph, request: &Request) -> Requested {
+    Requested {
+        option: request.option.clone(),
+        via: graph.name(&request.glue).to_owned(),
+        item: graph.name(&request.item).to_owned(),
+        item_drv: request.item.to_absolute_path(),
     }
 }
 

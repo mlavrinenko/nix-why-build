@@ -19,6 +19,7 @@ pub mod config;
 pub mod drv;
 pub mod eval;
 pub mod report;
+pub mod requester;
 pub mod roots;
 pub mod walk;
 

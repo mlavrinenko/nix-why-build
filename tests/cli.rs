@@ -10,7 +10,7 @@ mod fixture;
 use fixture::{FakeStore, PUBLIC, SECRET, file_cache, narinfo, spec};
 
 /// A store where `lib` is served and everything else misses:
-/// `system` (glue) -> `app-1.0` -> `lib-1.0` (served),
+/// `system` (glue) -> `system-path` -> `app-1.0` -> `lib-1.0` (served),
 /// `system` -> `tool-2.0` -> `src.tar.gz` (a fetch), and
 /// `system` -> `unit-x.service` (glue, a root that drags in no package).
 struct World {
@@ -31,9 +31,10 @@ fn world() -> World {
     let src = store.add(&spec("src.tar.gz").fixed());
     let tool = store.add(&spec("tool-2.0").env("pname", "tool").input(&src, &["out"]));
     let unit = store.add(&spec("unit-x.service"));
+    let path = store.add(&spec("system-path").input(&app, &["out"]));
     let top = store.add(
         &spec("system")
-            .input(&app, &["out"])
+            .input(&path, &["out"])
             .input(&tool, &["out"])
             .input(&unit, &["out"]),
     );
@@ -44,7 +45,8 @@ fn world() -> World {
 }
 
 /// What `world()` prints: the fetch root first, since it drags a package in.
-const GROUPED: &str = "src.tar.gz (fetch)\n  drags in tool-2.0\napp-1.0\n";
+const GROUPED: &str =
+    "src.tar.gz (fetch)\n  drags in tool-2.0\napp-1.0\n  wanted by environment.systemPackages\n";
 
 fn cmd(world: &World) -> Command {
     let mut cmd = Command::cargo_bin(env!("CARGO_PKG_NAME")).expect("binary should build");
@@ -89,7 +91,7 @@ fn groups_packages_under_their_roots_and_hides_glue() {
         .assert()
         .success()
         .stdout(GROUPED)
-        .stderr("2 roots, 2 packages to build, 3 more without a pname\n");
+        .stderr("2 roots, 2 packages to build, 4 more without a pname\n");
 }
 
 /// The value at a JSON pointer, `Null` when absent.
@@ -133,6 +135,10 @@ fn prints_the_report_as_json() {
         ])
     );
     assert_eq!(at(&report, "/roots/1/name"), "app-1.0");
+    assert_eq!(
+        at(&report, "/roots/1/requested_by"),
+        serde_json::json!([{"option": "environment.systemPackages", "via": "system-path", "item": "app-1.0", "item_drv": at(&report, "/roots/1/drv")}])
+    );
     assert_eq!(at(&report, "/roots/2/name"), "unit-x.service");
     assert_eq!(at(&report, "/unknown"), serde_json::json!([]));
 }

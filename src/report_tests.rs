@@ -26,6 +26,7 @@ fn root(name: &str, pname: Option<&str>, fixed_output: bool, cascades: Vec<Casca
         drv: format!("/nix/store/x-{name}.drv"),
         fixed_output,
         cascades,
+        requested_by: vec![],
     }
 }
 
@@ -188,5 +189,69 @@ fn roots_dragging_in_different_packages_stay_apart() {
     assert_eq!(
         report.human(),
         "a-src.tar.gz (fetch)\n  drags in a-1\nb-src.tar.gz (fetch)\n  drags in b-1\n"
+    );
+}
+
+fn wanted(root: Root, options: &[&str]) -> Root {
+    Root {
+        requested_by: options
+            .iter()
+            .map(|option| super::Requested {
+                option: (*option).to_owned(),
+                via: "glue".to_owned(),
+                item: "item".to_owned(),
+                item_drv: "/nix/store/x-item.drv".to_owned(),
+            })
+            .collect(),
+        ..root
+    }
+}
+
+#[test]
+fn a_group_says_once_which_options_want_it_and_caps_them_at_three() {
+    let owner = || vec![cascade("kache-1.0.0", Some("kache"))];
+    let report = report(
+        vec![
+            wanted(
+                root("a-1", Some("a"), false, owner()),
+                &["environment.systemPackages", "systemd.services.b"],
+            ),
+            wanted(
+                root("b-1", Some("b"), false, owner()),
+                &[
+                    "environment.systemPackages",
+                    "home.packages",
+                    "systemd.services.a",
+                ],
+            ),
+        ],
+        vec![],
+        vec![],
+    );
+    assert_eq!(
+        report.human(),
+        "2 roots: a-1, b-1\n  wanted by environment.systemPackages, home.packages, systemd.services.a (+1 more)\n  drags in kache-1.0.0\n"
+    );
+}
+
+#[test]
+fn toplevel_alone_is_not_worth_a_line_but_beside_an_option_it_is() {
+    let report = report(
+        vec![
+            wanted(
+                root("glibc-locales-2.42", Some("glibc-locales"), false, vec![]),
+                &["toplevel"],
+            ),
+            wanted(
+                root("nh-4.4.2", Some("nh"), false, vec![]),
+                &["environment.systemPackages", "toplevel"],
+            ),
+        ],
+        vec![],
+        vec![],
+    );
+    assert_eq!(
+        report.human(),
+        "glibc-locales-2.42\nnh-4.4.2\n  wanted by environment.systemPackages, toplevel\n"
     );
 }
