@@ -48,6 +48,10 @@
   doctests. `just cover` instruments that same runner via `cargo llvm-cov
   nextest`, so a test cannot pass under the gate and fail under coverage (or
   the reverse) with nothing saying so.
+- The Linux release binaries are `nix build .#static` (musl, so they run on
+  NixOS). `nix flake check` builds only `.#default`, so after adding a
+  dependency with C code, build `.#static` and run `file result/bin/*`: it
+  must say statically linked.
 - Release only with `just release X.Y.Z`, after `just release X.Y.Z --dry-run`
   passes; never `cargo publish` by hand, and don't push main first. The recipe
   refuses a dirty tree, an origin/main that main lacks commits of, an existing

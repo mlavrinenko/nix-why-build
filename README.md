@@ -144,6 +144,8 @@ environment.systemPackages = [ pkgs.nix-why-build ];
 
 Every release also lands on crates.io and as a binary on the
 [releases page](https://github.com/mlavrinenko/nix-why-build/releases/latest).
+The Linux binaries are static musl builds, so they run on NixOS and on any
+other distro with nix; `nix build .#static` makes the same one locally.
 Before the first one, take `main` with
 `cargo install --git https://github.com/mlavrinenko/nix-why-build`.
 

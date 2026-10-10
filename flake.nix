@@ -34,8 +34,17 @@
         llvm = pkgs.llvmPackages_21.llvm;
       in
       {
-        # For `nix build` & `nix run`.
-        packages.default = pkgs.nix-why-build;
+        packages = {
+          # For `nix build` & `nix run`.
+          default = pkgs.nix-why-build;
+        }
+        // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          # The Linux release binary: static musl, so it runs on NixOS (which
+          # has no /lib64/ld-linux) and on any distro. `pkgsStatic` re-imports
+          # nixpkgs with the same overlays, so this is the overlay's package
+          # function, not a copy. `nix build .#static` reproduces the release.
+          static = pkgs.pkgsStatic.nix-why-build;
+        };
 
         # `nix flake check` builds the package `nix run` installs, so a
         # `Cargo.lock` the vendoring rejects, or a source file the build

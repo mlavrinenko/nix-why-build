@@ -95,3 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The nixpkgs lookup sends its query to nix on stdin, so a mass rebuild with
   thousands of roots keeps its reasons instead of failing every lookup with
   `Argument list too long`.
+- The Linux release binaries are static musl builds from the flake
+  (`nix build .#static`), so they start on NixOS, where the glibc binaries
+  built on Ubuntu found no `/lib64/ld-linux`. The Windows binary is gone: nix
+  does not run there.

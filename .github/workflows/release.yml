@@ -97,56 +97,72 @@ jobs:
     strategy:
       matrix:
         include:
-          - target: x86_64-unknown-linux-gnu
+          - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-24.04-arm
           - target: x86_64-apple-darwin
             os: macos-latest
           - target: aarch64-apple-darwin
             os: macos-latest
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
 
     steps:
       - uses: actions/checkout@v6.0.3
         with:
           ref: refs/tags/${{ needs.meta.outputs.tag }}
 
-      # Cross-platform release binaries are built with rustup rather than Nix
-      # (Nix on the Windows/macOS runners is impractical). Pinned to a commit, so
-      # the channel must be given explicitly; it tracks rust-toolchain.toml.
+      # Linux binaries come from the flake: static musl builds, so they run on
+      # NixOS, which has no /lib64/ld-linux for a glibc binary, and a local
+      # `nix build .#static` reproduces them. Each runner builds its own
+      # architecture, and the cache key carries it so the two never share a
+      # store. The `nix-static-` prefix keeps `check`'s purge off these caches.
+      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
+        if: runner.os == 'Linux'
+      - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
+        if: runner.os == 'Linux'
+        with:
+          primary-key: nix-static-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/flake.lock', '**/*.nix') }}
+          restore-prefixes-first-match: nix-static-${{ runner.os }}-${{ runner.arch }}-
+          gc-max-store-size-linux: 5G
+          purge: true
+          purge-prefixes: nix-static-${{ runner.os }}-${{ runner.arch }}-
+          purge-created: 0
+          purge-primary-key: never
+
+      # A binary that is not static, or does not start, fails here, before it
+      # is uploaded.
+      - name: Build static binary
+        if: runner.os == 'Linux'
+        run: |
+          nix build .#static
+          install -m 0755 result/bin/${{ needs.meta.outputs.binary }} ${{ needs.meta.outputs.binary }}-${{ matrix.target }}
+          file ${{ needs.meta.outputs.binary }}-${{ matrix.target }} | grep -E 'statically linked|static-pie linked'
+          ./${{ needs.meta.outputs.binary }}-${{ matrix.target }} --version
+
+      # macOS stays on rustup: Apple supports no static binaries, and Nix on
+      # the macOS runners is impractical. Pinned to a commit, so the channel
+      # must be given explicitly; it tracks rust-toolchain.toml.
       - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # stable channel pinned below
+        if: runner.os == 'macOS'
         with:
           toolchain: stable
           targets: ${{ matrix.target }}
 
       - uses: Swatinem/rust-cache@v2.9.1
+        if: runner.os == 'macOS'
         with:
           key: ${{ matrix.target }}
 
-      - name: Install cross-compilation tools
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
-
       - name: Build release binary
-        run: cargo build --release --locked --target ${{ matrix.target }}
-
-      - name: Rename binary (unix)
-        if: runner.os != 'Windows'
-        run: cp target/${{ matrix.target }}/release/${{ needs.meta.outputs.binary }} ${{ needs.meta.outputs.binary }}-${{ matrix.target }}
-
-      - name: Rename binary (windows)
-        if: runner.os == 'Windows'
-        run: cp target/${{ matrix.target }}/release/${{ needs.meta.outputs.binary }}.exe ${{ needs.meta.outputs.binary }}-${{ matrix.target }}.exe
+        if: runner.os == 'macOS'
+        run: |
+          cargo build --release --locked --target ${{ matrix.target }}
+          cp target/${{ matrix.target }}/release/${{ needs.meta.outputs.binary }} ${{ needs.meta.outputs.binary }}-${{ matrix.target }}
 
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: ${{ needs.meta.outputs.binary }}-${{ matrix.target }}
-          path: ${{ needs.meta.outputs.binary }}-${{ matrix.target }}*
+          path: ${{ needs.meta.outputs.binary }}-${{ matrix.target }}
 
   publish:
     name: Publish to crates.io
