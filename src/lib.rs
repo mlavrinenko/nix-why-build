@@ -16,6 +16,7 @@
 
 pub mod cache;
 pub mod config;
+pub mod diff;
 pub mod drv;
 pub mod eval;
 pub mod modules;

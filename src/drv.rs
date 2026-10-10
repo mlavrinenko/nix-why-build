@@ -52,19 +52,7 @@ pub enum DrvError {
 /// [`DrvError::Read`] when the file cannot be read, [`DrvError::Parse`] when
 /// it is not a derivation with every output path known.
 pub fn read(store_dir: &Path, path: &StorePath) -> Result<Drv, DrvError> {
-    let file = store_dir.join(path.to_string());
-    let bytes = std::fs::read(&file).map_err(|source| DrvError::Read {
-        path: file.display().to_string(),
-        source,
-    })?;
-    let parsed =
-        nix_compat::derivation::UnverifiedDerivation::from_aterm_bytes(&bytes).map_err(|err| {
-            DrvError::Parse {
-                path: file.display().to_string(),
-                reason: format!("{err:?}"),
-            }
-        })?;
-    let (builder, outputs) = parsed.into_parts();
+    let (builder, outputs) = parse(store_dir, path)?;
     let env = |key: &str| {
         builder
             .environment
@@ -101,6 +89,58 @@ pub fn read(store_dir: &Path, path: &StorePath) -> Result<Drv, DrvError> {
             .collect(),
         path: path.clone(),
     })
+}
+
+/// Everything a diff compares: the environment (structured attrs stay in
+/// `__json`) and the input derivations.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Attrs {
+    /// Environment variable to value.
+    pub env: BTreeMap<String, String>,
+    /// Input `.drv` paths.
+    pub inputs: BTreeSet<StorePath>,
+}
+
+/// Reads the attributes of `path` in full, for a diff.
+///
+/// # Errors
+///
+/// As [`read`].
+pub fn read_attrs(store_dir: &Path, path: &StorePath) -> Result<Attrs, DrvError> {
+    let (builder, _) = parse(store_dir, path)?;
+    Ok(Attrs {
+        env: builder
+            .environment
+            .iter()
+            .map(|(key, value)| (key.clone(), String::from_utf8_lossy(value).into_owned()))
+            .collect(),
+        inputs: builder.input_derivations.keys().cloned().collect(),
+    })
+}
+
+fn parse(
+    store_dir: &Path,
+    path: &StorePath,
+) -> Result<
+    (
+        nix_compat::derivation::DerivationBuilder,
+        nix_compat::derivation::Outputs,
+    ),
+    DrvError,
+> {
+    let file = store_dir.join(path.to_string());
+    let bytes = std::fs::read(&file).map_err(|source| DrvError::Read {
+        path: file.display().to_string(),
+        source,
+    })?;
+    let parsed =
+        nix_compat::derivation::UnverifiedDerivation::from_aterm_bytes(&bytes).map_err(|err| {
+            DrvError::Parse {
+                path: file.display().to_string(),
+                reason: format!("{err:?}"),
+            }
+        })?;
+    Ok(parsed.into_parts())
 }
 
 #[cfg(test)]

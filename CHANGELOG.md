@@ -36,3 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `apps/llama-cpp-16gb.nix` for the configuration's own, `<input>:path` for a
   flake input's. home-manager options resolve per user, units by their real
   name, `environment.etc` and `home.file` by the entry whose source it is.
+- `diff::Diff` names what differs between a root and its nixpkgs counterpart:
+  attributes added, removed and changed (structured attrs key by key, store
+  hashes ignored), and inputs added, removed or built differently.
