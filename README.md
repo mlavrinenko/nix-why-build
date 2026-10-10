@@ -16,20 +16,32 @@ and on a fresh box.
 
 ```console
 $ nix-why-build .#nixosConfigurations.tank
-agent-browser-0.39.0
-audio.cpp-542bb4e
-canon-cups-ufr2-6.20
-firefox-156.0.1
+13 fetches: andale32.exe, arial32.exe, arialb32.exe (+10 more)
+  drags in corefonts-1, steam-1.0.0.85, steam-run-1.0.0.85
+cargo-1.99.0-x86_64-unknown-linux-gnu.tar.xz (fetch)
+  drags in cargo-1.99.0-x86_64-unknown-linux-gnu, rust-minimal-1.99.0, kache-1.0.0
+246 fetches: acorn-8.18.0.tgz, aix-ppc64-0.27.7.tgz, aix-ppc64-0.28.2.tgz (+243 more)
+  drags in octrimmer-0.1.1-sources, octrimmer-0.1.1
+223 roots: arraydeque-0.5.1, arrayvec-0.7.8, assert_cmd-2.2.2 (+220 more)
+  drags in kache-1.0.0
+russian-trusted-ca-constrained.crt
+  drags in firefox-156.0.1
+...
 llama-cpp-0.5.0
 nh-4.4.2
 thunderbird-156.0
-...
-45 to build, plus 1424 config derivations
+514 roots in 29 groups, 45 packages to build, 1424 more without a pname
 ```
 
-Packages go to stdout, one per line, so it pipes. The tally goes to stderr.
-Config glue (units, `etc`, `system-path`, wrapper scripts) is cheap to build,
-so it's counted, not listed.
+A **root** is something no cache serves even though
+everything it needs is served. That's where the miss starts. Everything it
+**drags in** only builds because of it. Fix the root, and the rest comes from
+the cache again. Above, a custom CA cert is why Firefox compiles, and kache's
+223 vendored crates are one line, not 223.
+
+Roots that drag in the same packages print as one group. Config glue (units,
+`etc`, `system-path`, wrapper scripts) is cheap to build, so it's counted,
+not listed. The tally goes to stderr.
 
 It takes any of these.
 
@@ -58,23 +70,50 @@ on top of nix's own 17 s evaluation. It asks the first cache alone, since it
 serves most paths, then the rest at once, and resends a request that stalls.
 `RUST_LOG=info` prints the per-level timings.
 
-Want it machine readable? Pass `--json`.
+Want it machine readable? Pass `--json`. Here it is trimmed to one root.
 
 ```json
 {
   "toplevel": "/nix/store/rcfn...-nixos-system-tank-26.05.20260927.cf5e765.drv",
-  "substituters": ["https://cache.nixos.org/", "https://cache.nixos-cuda.org"],
+  "substituters": [
+    "https://cache.nixos.org/",
+    "https://devenv.cachix.org"
+  ],
+  "roots": [
+    {
+      "name": "russian-trusted-ca-constrained.crt",
+      "pname": null,
+      "version": null,
+      "drv": "/nix/store/qnmh...-russian-trusted-ca-constrained.crt.drv",
+      "fixed_output": false,
+      "cascades": [
+        {
+          "name": "firefox-156.0.1",
+          "pname": "firefox",
+          "drv": "/nix/store/a4av...-firefox-156.0.1.drv",
+          "chain": [
+            "firefox-156.0.1",
+            "policies.json",
+            "russian-trusted-ca-constrained.crt"
+          ]
+        }
+      ]
+    }
+  ],
   "to_build": [
     {
-      "name": "llama-cpp-0.5.0",
-      "pname": "llama-cpp",
-      "version": "0.5.0",
-      "drv": "/nix/store/...-llama-cpp-0.5.0.drv"
+      "name": "firefox-156.0.1",
+      "pname": "firefox",
+      "version": "156.0.1",
+      "drv": "/nix/store/a4av...-firefox-156.0.1.drv"
     }
   ],
   "unknown": []
 }
 ```
+
+Every cascade carries its `chain` down to the root, so you see the path. Here
+Firefox bakes the cert in through its `policies.json`.
 
 `unknown` lists derivations it couldn't decide, like a `.drv` it can't parse (a
 floating content-addressed one) or a cache that errored instead of answering.

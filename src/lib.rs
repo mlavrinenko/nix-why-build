@@ -98,5 +98,5 @@ pub async fn explain(options: &Options) -> Result<Report, Error> {
     let substituters = cache::Substituters::new(&urls, &keys, nix_config.require_sigs)?;
     let top = eval::drv_path(&options.installable).await?;
     let graph = walk::walk(&options.store_dir, &top, &substituters).await;
-    Ok(Report::new(&graph, &substituters))
+    Ok(Report::new(&graph, &roots::split(&graph), &substituters))
 }

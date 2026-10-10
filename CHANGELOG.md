@@ -24,3 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `roots::split` tells roots (built while every input is served) from
   cascades (built because an input is), with a shortest chain from each
   cascade down to each of its roots.
+- The report groups by root: each root, or each group of roots that drag in
+  the same packages, prints with what it drags in. `--json` carries every
+  root with every cascade and its chain.
