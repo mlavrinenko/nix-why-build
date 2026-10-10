@@ -34,6 +34,8 @@ scopes:
     - "Cargo.toml"
     - "Cargo.lock"
     - "rust-toolchain.toml"
+    # A test compares the generated schema with this file.
+    - "docs/report.schema.json"
 
   # cargo fmt's config — edits change what "formatted" means.
   rust-fmt:

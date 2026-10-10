@@ -47,7 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   report gets colors. `--color` and `NO_COLOR` decide the colors, and a pipe
   gets plain text either way.
 - `--json` prints the whole report, every cascade with its chain down to its
-  root.
+  root. [docs/report.schema.json](docs/report.schema.json) is its JSON
+  Schema, generated from the code.
 - It runs on a nix with flakes switched off, and `| head` ends it quietly.
 - As a library, `nix_why_build::explain` returns the same report. It prints
   nothing, takes an optional progress callback, and exports only what a caller

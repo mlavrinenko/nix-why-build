@@ -144,6 +144,12 @@ outdatty-check:
 eject PCT='90':
     scripts/eject.sh '{{ PCT }}'
 
+[doc("Regenerate docs/report.schema.json from the report's types")]
+[group("extra")]
+schema:
+    mkdir -p docs
+    UPDATE_SCHEMA=1 just test the_documented_schema_matches_the_report
+
 [doc("Diff to_build with nix's own dry-run plan")]
 [group("extra")]
 oracle INSTALLABLE: (build "--release")

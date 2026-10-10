@@ -15,6 +15,7 @@ use crate::walk::Graph;
 /// The answer: the roots of what gets built, the rest it drags in, and
 /// what could not be decided.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Report {
     /// The `.drv` the walk started from.
@@ -33,6 +34,7 @@ pub struct Report {
 
 /// One derivation that gets built.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Package {
     /// The derivation name, `pname-version` for a package.
@@ -47,6 +49,7 @@ pub struct Package {
 
 /// A derivation built while every input it uses is served.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Root {
     /// The derivation name.
@@ -69,6 +72,7 @@ pub struct Root {
 
 /// One option that pulls a root in.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Requested {
     /// The option, like `environment.systemPackages`, or `toplevel` when no
@@ -89,6 +93,7 @@ pub struct Requested {
 
 /// A derivation built only because a root below it is.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Cascade {
     /// The derivation name.
@@ -103,6 +108,7 @@ pub struct Cascade {
 
 /// One derivation with no answer.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Unknown {
     /// The `.drv` path.

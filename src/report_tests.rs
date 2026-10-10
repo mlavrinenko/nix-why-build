@@ -479,3 +479,21 @@ fn a_group_names_an_option_once_with_the_files_of_every_root() {
         "2 roots: a, b\n  why unknown: test\n  wanted by environment.systemPackages (apps/a.nix, apps/shared.nix +1)\n  drags in kache-1.0.0\n"
     );
 }
+
+/// `docs/report.schema.json` is generated from these types; `just schema`
+/// rewrites it.
+#[test]
+fn the_documented_schema_matches_the_report() {
+    let schema = serde_json::to_string_pretty(&schemars::schema_for!(Report))
+        .expect("a schema serializes")
+        + "\n";
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/report.schema.json");
+    if std::env::var_os("UPDATE_SCHEMA").is_some() {
+        std::fs::write(&path, &schema).expect("docs/ is writable");
+    }
+    let documented = std::fs::read_to_string(&path).unwrap_or_default();
+    assert!(
+        documented == schema,
+        "docs/report.schema.json lags the report: run `just schema`"
+    );
+}

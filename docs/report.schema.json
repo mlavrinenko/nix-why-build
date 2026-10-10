@@ -1,0 +1,460 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Report",
+  "description": "The answer: the roots of what gets built, the rest it drags in, and\nwhat could not be decided.",
+  "type": "object",
+  "properties": {
+    "roots": {
+      "description": "Where the misses start: most named cascades first, then by name.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Root"
+      }
+    },
+    "substituters": {
+      "description": "The substituters asked, in order.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "to_build": {
+      "description": "Every derivation no substituter serves, sorted by name.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Package"
+      }
+    },
+    "toplevel": {
+      "description": "The `.drv` the walk started from.",
+      "type": "string"
+    },
+    "unknown": {
+      "description": "Derivations with no answer.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Unknown"
+      }
+    },
+    "warnings": {
+      "description": "What could not be worked out, said once each.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "toplevel",
+    "substituters",
+    "roots",
+    "to_build",
+    "unknown",
+    "warnings"
+  ],
+  "$defs": {
+    "Cascade": {
+      "description": "A derivation built only because a root below it is.",
+      "type": "object",
+      "properties": {
+        "chain": {
+          "description": "Names from this derivation down to the root, both included.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "drv": {
+          "description": "The `.drv` path.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The derivation name.",
+          "type": "string"
+        },
+        "pname": {
+          "description": "`pname`, if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "drv",
+        "chain"
+      ]
+    },
+    "Diff": {
+      "description": "The differences, each list sorted by name.",
+      "type": "object",
+      "properties": {
+        "added": {
+          "description": "Attributes only the root sets.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "changed": {
+          "description": "Attributes both set, to different values.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inputs_added": {
+          "description": "Input derivations, by name, only the root uses.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inputs_changed": {
+          "description": "Inputs both use by name, built differently.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inputs_removed": {
+          "description": "Input derivations, by name, only the counterpart uses.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "removed": {
+          "description": "Attributes only the counterpart sets.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "added",
+        "removed",
+        "changed",
+        "inputs_added",
+        "inputs_removed",
+        "inputs_changed"
+      ]
+    },
+    "Package": {
+      "description": "One derivation that gets built.",
+      "type": "object",
+      "properties": {
+        "drv": {
+          "description": "The `.drv` path.",
+          "type": "string"
+        },
+        "name": {
+          "description": "The derivation name, `pname-version` for a package.",
+          "type": "string"
+        },
+        "pname": {
+          "description": "`pname`; config glue and most fetches have none.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "version": {
+          "description": "`version`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "drv"
+      ]
+    },
+    "Reason": {
+      "description": "Why a root is in no cache.",
+      "oneOf": [
+        {
+          "description": "`allowSubstitutes = false`: nix builds it without asking a cache.",
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "const": "local-only"
+            }
+          },
+          "required": [
+            "category"
+          ]
+        },
+        {
+          "description": "A fixed-output fetch no cache has: the build downloads it.",
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "const": "fetch"
+            },
+            "urls": {
+              "description": "Where it downloads from.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "category",
+            "urls"
+          ]
+        },
+        {
+          "description": "It differs from what nixpkgs builds under the same attribute.",
+          "type": "object",
+          "properties": {
+            "against": {
+              "description": "The counterpart, like `unstable#pkgsCuda.llama-cpp`.",
+              "type": "string"
+            },
+            "against_cached": {
+              "description": "Whether a cache has the counterpart.",
+              "type": "boolean"
+            },
+            "category": {
+              "type": "string",
+              "const": "overridden"
+            },
+            "diff": {
+              "description": "What differs.",
+              "$ref": "#/$defs/Diff"
+            }
+          },
+          "required": [
+            "category",
+            "against",
+            "against_cached",
+            "diff"
+          ]
+        },
+        {
+          "description": "nixpkgs builds exactly this, and it is unfree: Hydra skips it.",
+          "type": "object",
+          "properties": {
+            "against": {
+              "description": "The counterpart.",
+              "type": "string"
+            },
+            "category": {
+              "type": "string",
+              "const": "unfree"
+            }
+          },
+          "required": [
+            "category",
+            "against"
+          ]
+        },
+        {
+          "description": "nixpkgs builds exactly this, and its meta keeps Hydra off it.",
+          "type": "object",
+          "properties": {
+            "against": {
+              "description": "The counterpart.",
+              "type": "string"
+            },
+            "because": {
+              "description": "`meta.broken`, or the `meta.hydraPlatforms` it has.",
+              "type": "string"
+            },
+            "category": {
+              "type": "string",
+              "const": "not-built-by-hydra"
+            }
+          },
+          "required": [
+            "category",
+            "against",
+            "because"
+          ]
+        },
+        {
+          "description": "nixpkgs builds exactly this, but the cache has not caught up with\nthat revision: its `hello` is missing too.",
+          "type": "object",
+          "properties": {
+            "against": {
+              "description": "The counterpart.",
+              "type": "string"
+            },
+            "category": {
+              "type": "string",
+              "const": "newer-than-cache"
+            }
+          },
+          "required": [
+            "category",
+            "against"
+          ]
+        },
+        {
+          "description": "No nixpkgs input has an attribute under the names tried: a custom\npackage, or one nixpkgs names differently.",
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "const": "no-counterpart"
+            },
+            "tried": {
+              "description": "The attributes looked for.",
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "category",
+            "tried"
+          ]
+        },
+        {
+          "description": "None of the above could be shown.",
+          "type": "object",
+          "properties": {
+            "because": {
+              "description": "What was found instead.",
+              "type": "string"
+            },
+            "category": {
+              "type": "string",
+              "const": "unknown"
+            }
+          },
+          "required": [
+            "category",
+            "because"
+          ]
+        }
+      ]
+    },
+    "Requested": {
+      "description": "One option that pulls a root in.",
+      "type": "object",
+      "properties": {
+        "files": {
+          "description": "The module files that set the option, when the configuration could\nbe indexed: relative to its flake, or `<input>:path` for an input's.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "item": {
+          "description": "What the option lists on the way to the root.",
+          "type": "string"
+        },
+        "item_drv": {
+          "description": "That item's `.drv` path.",
+          "type": "string"
+        },
+        "option": {
+          "description": "The option, like `environment.systemPackages`, or `toplevel` when no\nglue node stands between the toplevel and the root.",
+          "type": "string"
+        },
+        "via": {
+          "description": "The glue derivation that option builds.",
+          "type": "string"
+        },
+        "via_drv": {
+          "description": "Its `.drv` path.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "option",
+        "via",
+        "via_drv",
+        "item",
+        "item_drv",
+        "files"
+      ]
+    },
+    "Root": {
+      "description": "A derivation built while every input it uses is served.",
+      "type": "object",
+      "properties": {
+        "cascades": {
+          "description": "What gets built because of it: nearest first, then by name.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Cascade"
+          }
+        },
+        "drv": {
+          "description": "The `.drv` path.",
+          "type": "string"
+        },
+        "fixed_output": {
+          "description": "Whether it is a fetch (a fixed-output derivation).",
+          "type": "boolean"
+        },
+        "name": {
+          "description": "The derivation name.",
+          "type": "string"
+        },
+        "pname": {
+          "description": "`pname`, if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reason": {
+          "description": "Why no cache has it.",
+          "$ref": "#/$defs/Reason"
+        },
+        "requested_by": {
+          "description": "The options that pull it in, by option.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Requested"
+          }
+        },
+        "version": {
+          "description": "`version`, if any.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "drv",
+        "fixed_output",
+        "cascades",
+        "requested_by",
+        "reason"
+      ]
+    },
+    "Unknown": {
+      "description": "One derivation with no answer.",
+      "type": "object",
+      "properties": {
+        "drv": {
+          "description": "The `.drv` path.",
+          "type": "string"
+        },
+        "reason": {
+          "description": "Why.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "drv",
+        "reason"
+      ]
+    }
+  }
+}

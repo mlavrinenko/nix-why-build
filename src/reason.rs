@@ -12,6 +12,7 @@ use crate::drv::{Drv, read_attrs};
 
 /// Why a root is in no cache.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[non_exhaustive]
 #[serde(tag = "category", rename_all = "kebab-case")]
 pub enum Reason {

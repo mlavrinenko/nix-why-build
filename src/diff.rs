@@ -14,6 +14,7 @@ use crate::drv::{Attrs, DrvError, read_attrs};
 
 /// The differences, each list sorted by name.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[cfg_attr(test, derive(schemars::JsonSchema))]
 #[non_exhaustive]
 pub struct Diff {
     /// Attributes only the root sets.
