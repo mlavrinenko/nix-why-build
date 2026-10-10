@@ -27,7 +27,7 @@
     ),
   ),
   assignee: "max",
-  status: proposed(2026, 10, 10),
+  status: done(2026, 10, 10),
 )
 
 == Problem
@@ -55,13 +55,12 @@ left in a closing report no one rereads. It belongs in
 
 == Changes
 
-- `.mmz/config.yaml`: drop the `gate` tag from `just check-tasks`.
-- `.githooks/pre-commit`: run `mt check -q` beside the freshness assertion.
+- `.mmz/config.yaml`: narrow the `tasks` scope from `truth/**` to `truth/*.typ`, as mindtape and canibump do; `just check-tasks` keeps its `gate` tag, and the commit-msg hook's `mt check --commit-msg` validates staged tasks.
 
 
 == Rollback
 
-- Restore the tag and the hook line.
+- Restore `truth/**` in the `tasks` scope.
 
 
 == Out of scope

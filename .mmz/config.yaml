@@ -68,11 +68,13 @@ scopes:
     - "CHANGELOG.md"
     - "www/**"
 
-  # The backlog and the config that decides what a valid task is. `mt flip`
-  # writes a task file, so a flip busts this rule: re-run `just check` after
-  # `mt done` and before the commit.
+  # What decides a valid task: the config, templates and goals. The task
+  # files under truth/tasks/ are left out on purpose: `mt flip` writes the
+  # file its close gate asserts on, so a multi-task close would stale itself
+  # mid-command. The commit-msg hook (`mt check --commit-msg`) validates the
+  # staged tasks instead.
   tasks:
-    - "truth/**"
+    - "truth/*.typ"
     - ".mindtape/config.toml"
     - ".mindtape/templates/**"
 

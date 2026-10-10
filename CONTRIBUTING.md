@@ -30,30 +30,21 @@ coverage, so anything there is untested by default.
 - CLI and integration tests live in `tests/` and drive the built binary with
   [`assert_cmd`](https://docs.rs/assert_cmd) + [`predicates`](https://docs.rs/predicates)
   (see `tests/cli.rs`).
-- Run the full suite with `just test`: `cargo nextest run --status-level fail`
-  (one process per test, so a panic or hang is isolated; a green run prints only
-  the summary, a failure prints the full output) plus `cargo test --doc` for
-  doctests, which [cargo-nextest](https://nexte.st) does not run. `just cover`
-  instruments the same nextest runner, so the gate and coverage can't disagree
-  about whether a test passes. The output level lives in
-  [.config/nextest.toml](.config/nextest.toml), not in the recipe: `cargo
-  llvm-cov nextest` accepts `--status-level fail` and ignores it, so a coverage
-  run printed one `PASS` line per test until the profile moved there.
-- As a file approaches the linecop limit, `just fix-check` ejects its inline
-  `#[cfg(test)]` module into a sibling `_tests.rs` file via
-  [ejectest](https://github.com/mlavrinenko/ejectest), driven by `linecop --baseline`.
-  This keeps source files under the limit without losing the inline-test workflow.
+- `just test` runs `cargo nextest run` (one process per test; a green run
+  prints only the summary) plus `cargo test --doc`, which nextest skips.
+  `just cover` instruments the same runner. The output level lives in
+  [.config/nextest.toml](.config/nextest.toml), because `cargo llvm-cov
+  nextest` ignores `--status-level` on the command line.
+- Near the linecop limit, `just fix-check` ejects an inline `#[cfg(test)]`
+  module into a sibling `_tests.rs` via
+  [ejectest](https://github.com/mlavrinenko/ejectest).
 
 ## Code Coverage
 
-Minimum 70% line coverage enforced via `cargo-llvm-cov`. Run `just cover` to check.
-llvm-cov merges the profraw of child processes, so subprocess-based e2e tests
-attribute correctly — unlike tarpaulin, which misses them. It starts with
-`cargo llvm-cov clean --workspace`, and that line is not tidiness: `--no-report`
-deliberately keeps the profraw pile so runs can be merged, so without the clean
-a long-lived checkout scores binaries that no longer exist. Never trade it for
-speed — it fails toward pessimism, which no floor complains about.
-`main.rs` is excluded from coverage — keep it thin and move testable logic to `lib.rs`.
+`just cover` enforces 70% line coverage with `cargo-llvm-cov`, which counts
+subprocess e2e tests too. It starts with `cargo llvm-cov clean --workspace` on
+purpose: without it a long-lived checkout scores binaries that no longer exist.
+`main.rs` is excluded, so keep it thin.
 
 ## CRAP Gate
 
@@ -63,16 +54,10 @@ coverage threshold can stay green while one branchy, untested function rots;
 CRAP catches that. Fix a flagged function by adding tests or reducing its
 branching. Tune the threshold per repo via `--threshold` or a `.cargo-crap.toml`.
 
-It reads `target/coverage/lcov.info` and **refuses a stale one** rather than
-scoring it, because cargo-crap's `--missing pessimistic` grades a function with
-no coverage record as 0% — so every file added since the last `just cover` reads
-as completely untested and arrives as a plausible finding. `just
-_lcov-stale-reason` is that test; run `just cover` first (CI and `just validate`
-chain them). The same rule is why `tests/**` and every ejected `*_tests.rs` are
-excluded: llvm-cov instruments the code under test, not the suite, so without
-those excludes the gate grades your test helpers. `--min 30`, matched to the
-threshold, is what keeps a green run quiet — the table then prints only what
-fails, and a red run still names every offender.
+It refuses a stale `target/coverage/lcov.info`, since a function with no
+coverage record grades as 0%, so run `just cover` first. `tests/**` and ejected
+`*_tests.rs` are excluded so the gate never grades test helpers. `--min 30`
+keeps a green run quiet.
 
 ## File Size Limits
 
@@ -133,24 +118,14 @@ detector loses the scent.
 
 ## Dependency Audits
 
-`just deny` runs `cargo-deny` over advisories, the license allow-list, and
-dependency bans. It is deliberately not part of `just check`: it fetches the
-advisory database, so it needs network and would make an offline commit fail.
-CI runs it in its own job. The recipe passes `--hide-inclusion-graph`: the
-default prints a full inclusion tree per crate it mentions, so a green run can
-be 1411 lines to say `advisories ok, bans ok, licenses ok`. Drop the flag when
-you are chasing one finding and want the tree.
+`just deny` runs `cargo-deny` (advisories, licenses, bans). It needs network,
+so it runs in its own CI job, not in `just check`. `--hide-inclusion-graph`
+keeps a green run to three lines; drop it to chase one finding. The policy is
+[deny.toml](deny.toml): add a license to `licenses.allow` deliberately, never
+to silence a finding.
 
-The policy lives in [deny.toml](deny.toml). A dependency under a license not in
-`licenses.allow` fails the check — add one deliberately, not to silence a
-finding. Keep the file in cargo-deny's current schema: a retired key (the old
-`advisories.vulnerability`, `licenses.copyleft`, ...) is rejected outright and
-fails the whole check rather than being ignored.
-
-`just outdated` (cargo-outdated) lists dependencies with newer versions
-published. Also network-bound, and deliberately not a gate — an upstream release
-is not a reason for CI to go red. Unrelated to `just outdatty-check` above,
-which is about doc drift rather than dependency versions.
+`just outdated` lists newer dependency versions. Also network-bound and never
+a gate.
 
 ## MSRV
 
@@ -190,8 +165,9 @@ says what the tool is for; every open task gives each goal a verdict.
 - File with `mt add -t feat` (or `fix`, `dev`, `docs`, `finding`, `tweak`).
   Start with `mt wip <stem>`, close with `mt done <stem>`, each flip staged
   with the work, and name the task in a `Refs: <stem>` footer.
-- `mt done` refuses until `just check` passed. The flip rewrites a task file,
-  so run `just check` once more before committing.
+- `mt done` refuses until `just check` passed. Task files sit outside the
+  gate's scope, so one `mt done leaf milestone` closes both; the commit-msg
+  hook validates the staged tasks.
 
 ## Submitting Changes
 

@@ -38,12 +38,12 @@ groups:
   dev-docs:
     source:
       .config/nextest.toml: e2eda0853a3c73ff4422e4d9a5f670c1aef1705b2281379dfdffdab04e837a79
-      .mmz/config.yaml: e2b518650d3093fc752e596107911fcb0368780b617aa32cd2653d4a61a12edf
+      .mmz/config.yaml: 3b0f22e8147362b850994804c86bf4735056c3da6606f598c2df205143a2a270
       Justfile: edb090d416c5ca176139e16721312aaa162f884560d8c6dd60a8b5b4a1bc7c18
       flake.nix: 02a3a8d9ad882fbf56ab007b0e3b66fd618bf3101ffe96d92599851b36d8210d
     dependents:
       AGENTS.md: e3c4884d40700feacae8e5996a150bf5e731bcaa791e6ef8c24aab77f8a180ac
-      CONTRIBUTING.md: 245c0c17727200d7b489b4b9adb0884299c57518a86439279583d002ab44ba45
+      CONTRIBUTING.md: 3bdf57a55cc92e36f3f6b1484973222eee826da77b48664765a4365d0c8f7dba
   release-notes:
     source:
       Cargo.toml: 8a0e03048785a6560605a3aa69d930455a81b50d1c7d9aafd70a350ef70886bd
