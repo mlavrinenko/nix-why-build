@@ -18,13 +18,24 @@ use crate::walk::Graph;
 /// What a root is looked up as: its `pname` and the package sets to try.
 type Key = (String, Vec<String>);
 
+/// What is known of the flake whose nixpkgs inputs roots are compared with.
+#[derive(Clone, Copy, Debug)]
+pub enum Inputs<'a> {
+    /// No flake was given (a `.drv` path), so there are no inputs to read.
+    NoFlake,
+    /// The flake and its inputs, as `nix flake archive` listed them.
+    Listed(&'a Labels),
+    /// `nix flake archive` failed; its first error line says why.
+    Unlisted(&'a str),
+}
+
 /// Each root's reason, keyed by root `.drv` path, and any warning: a failed
 /// lookup leaves those roots unknown.
 pub async fn classify_roots(
     store_dir: &Path,
     graph: &Graph,
     split: &Split,
-    labels: Option<&Labels>,
+    flake: Inputs<'_>,
     substituters: &Substituters,
 ) -> (HashMap<String, Reason>, Vec<String>) {
     let mut warnings = Vec::new();
@@ -39,7 +50,10 @@ pub async fn classify_roots(
         .and_then(|node| node.drv.as_ref())
         .map_or("x86_64-linux", |top| top.system.as_str());
     let keys = distinct_keys(&roots, system);
-    let inputs = labels.map(Labels::nixpkgs_inputs).unwrap_or_default();
+    let inputs = match flake {
+        Inputs::Listed(labels) => labels.nixpkgs_inputs(),
+        Inputs::NoFlake | Inputs::Unlisted(_) => Vec::new(),
+    };
     let lookups: Vec<counterparts::Lookup> = keys
         .iter()
         .map(|(pname, variants)| counterparts::Lookup {
@@ -47,7 +61,7 @@ pub async fn classify_roots(
             variants: variants.clone(),
         })
         .collect();
-    let found = find(system, &inputs, &lookups, &mut warnings).await;
+    let found = find(system, &inputs, &lookups, flake, &mut warnings).await;
     let facts = match &found {
         Ok(found) => facts(store_dir, found, substituters).await,
         Err(_) => Facts::default(),
@@ -85,13 +99,19 @@ async fn find(
     system: &str,
     inputs: &[Input],
     lookups: &[counterparts::Lookup],
+    flake: Inputs<'_>,
     warnings: &mut Vec<String>,
 ) -> Result<Found, String> {
     if lookups.is_empty() {
         return Ok(Found::default());
     }
     if inputs.is_empty() {
-        return Err("no nixpkgs flake input to compare against".to_owned());
+        return Err(match flake {
+            Inputs::Unlisted(why) => format!("the flake inputs could not be listed: {why}"),
+            Inputs::NoFlake | Inputs::Listed(_) => {
+                "no nixpkgs flake input to compare against".to_owned()
+            }
+        });
     }
     counterparts::find(system, inputs, lookups)
         .await

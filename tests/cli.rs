@@ -427,3 +427,32 @@ fn any_other_write_error_still_fails_loudly() {
     assert!(!output.status.success(), "{stderr}");
     assert!(stderr.contains("No space left on device"), "{stderr}");
 }
+
+#[test]
+fn flake_inputs_that_cannot_be_listed_are_a_warning_and_the_reason() {
+    let world = world();
+    let bin = tempfile::tempdir().expect("tempdir");
+    let script = format!(
+        "#!/bin/sh\n{DROP_FEATURES}case \"$1\" in\n  path-info) printf '%s\\n' '{}' ;;\n  flake) echo 'error: boom' >&2; exit 1 ;;\nesac\n",
+        world.top.to_absolute_path()
+    );
+    let path = install_nix(bin.path(), &script);
+    cmd(&world)
+        .env("PATH", path)
+        .args([
+            ".#packages.x86_64-linux.default",
+            "--substituter",
+            &cache_url(&world),
+            "--trusted-key",
+            PUBLIC,
+        ])
+        .assert()
+        .success()
+        .stdout(GROUPED.replace(
+            "no nixpkgs flake input to compare against",
+            "the flake inputs could not be listed: error: boom",
+        ))
+        .stderr(predicate::str::starts_with(
+            "warning: flake inputs unknown: error: boom\n",
+        ));
+}

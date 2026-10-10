@@ -164,8 +164,14 @@ async fn classify_app(hello_served: bool) -> super::Reason {
     let labels =
         crate::modules::Labels::parse(&format!(r#"{{"path": "{}"}}"#, nixpkgs.path().display()))
             .expect("labels");
-    let (reasons, warnings) =
-        super::classify_roots(store, &graph, &split, Some(&labels), &substituters).await;
+    let (reasons, warnings) = super::classify_roots(
+        store,
+        &graph,
+        &split,
+        super::Inputs::Listed(&labels),
+        &substituters,
+    )
+    .await;
     assert!(warnings.is_empty(), "{warnings:?}");
     reasons
         .get(&app.to_absolute_path())

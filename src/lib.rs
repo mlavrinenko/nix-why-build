@@ -116,7 +116,7 @@ pub async fn explain(options: &Options) -> Result<Report, Error> {
     };
     let labelled = async {
         match eval::flake_ref(&options.installable) {
-            Some(flake) => modules::labels(flake).await.ok(),
+            Some(flake) => Some(modules::labels(flake).await),
             None => None,
         }
     };
@@ -124,18 +124,22 @@ pub async fn explain(options: &Options) -> Result<Report, Error> {
     let graph = graph?;
     let split = roots::split(&graph);
     let mut report = Report::new(&graph, &split, &substituters);
-    let (reasons, warnings) = lookup::classify_roots(
-        &options.store_dir,
-        &graph,
-        &split,
-        labels.as_ref(),
-        &substituters,
-    )
-    .await;
+    let flake = match &labels {
+        Some(Ok(labels)) => lookup::Inputs::Listed(labels),
+        Some(Err(reason)) => {
+            report
+                .warnings
+                .push(format!("flake inputs unknown: {reason}"));
+            lookup::Inputs::Unlisted(reason)
+        }
+        None => lookup::Inputs::NoFlake,
+    };
+    let (reasons, warnings) =
+        lookup::classify_roots(&options.store_dir, &graph, &split, flake, &substituters).await;
     report.warnings.extend(warnings);
     report.set_reasons(&reasons);
     match index {
-        Some(Ok(index)) => report.locate(&index, &labels.unwrap_or_default()),
+        Some(Ok(index)) => report.locate(&index, &labels.and_then(Result::ok).unwrap_or_default()),
         Some(Err(reason)) => report
             .warnings
             .push(format!("module files unknown: {reason}")),
