@@ -3,23 +3,72 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Explain why a Nix build compiles what no binary cache serves. It asks the caches, not your local store, and names the root, the option that pulled it in and the reason.">
   <title>nix-why-build</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 4rem auto; padding: 0 1rem; line-height: 1.6; }
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 4rem auto; padding: 0 1rem; line-height: 1.6; }
     h1 { margin-bottom: 0.25rem; }
     code { background: #f4f4f4; padding: 0.15em 0.4em; border-radius: 3px; }
-    pre code { display: block; padding: 1em; overflow-x: auto; }
+    pre { background: #f4f4f4; padding: 1em; border-radius: 3px; overflow-x: auto; line-height: 1.4; }
+    pre code { background: none; padding: 0; }
+    .scroll { overflow-x: auto; }
+    table { border-collapse: collapse; }
+    th, td { text-align: left; vertical-align: top; padding: 0.3em 1em 0.3em 0; border-bottom: 1px solid #e4e4e4; }
   </style>
 </head>
 <body>
   <h1>nix-why-build</h1>
-  <p>Explain why a Nix build compiles what no binary cache serves. It asks the caches, not your local store.</p>
+  <p>Your <code>nixos-rebuild</code> is compiling Firefox again. Why? <code>nix build --dry-run</code> won't tell you. It only lists what's missing from <em>your</em> store, so anything you built yesterday quietly drops off the list.</p>
+  <p><code>nix-why-build</code> asks the binary caches instead. It stops wherever a cache serves the output, the same cut nix makes on an empty store. Same answer on your laptop and on a fresh box.</p>
+
+  <h2>Try it</h2>
+  <p>No install needed. Point it at your flake.</p>
+  <pre><code>nix run github:mlavrinenko/nix-why-build -- .#nixosConfigurations.&lt;host&gt;</code></pre>
+
+  <h2>What you get</h2>
+  <p>A trimmed report, cut from a real run on my desktop. The <code>...</code> lines are the groups I skipped.</p>
+  <pre><code>246 fetches: acorn-8.18.0.tgz, aix-ppc64-0.27.7.tgz, aix-ppc64-0.28.2.tgz (+243 more)
+  why fetch (246)
+...
+llama-cpp-0.5.0
+  why overridden: vs unstable#pkgsCuda.llama-cpp (cached): postPatch added; buildInputs, cmakeFlags changed; input blas-3 added
+  wanted by environment.systemPackages (apps/llama-cpp-16gb.nix), systemd.services.llama-cpp-embed (apps/llama-cpp-16gb.nix, base:apps/gpu-exclusive.nix) (+1 more)
+...
+11 local-only: cuda-merged-12.9, gimp-with-plugins-3.0.8, krita-6.0.2.1 (+8 more)
+  why local-only: allowSubstitutes = false: nix builds it even when a cache has it
+523 roots in 29 groups, 52 packages to build, 1621 more without a pname</code></pre>
+  <p>A <strong>root</strong> is something no cache serves even though everything it needs is served. That's where the miss starts. Fix the root and everything it <strong>drags in</strong> comes from the cache again. Roots that drag in the same packages print as one group, so 246 downloads cost one line.</p>
+  <p><strong>wanted by</strong> names the options that pull a root in and the module files that set them. Yours print as <code>apps/llama-cpp-16gb.nix</code>, a flake input's as <code>home-manager:modules/...</code>.</p>
+
+  <h2>Why no cache has it</h2>
+  <p><strong>why</strong> compares each root with what nixpkgs builds under the same attribute, in every nixpkgs input of your flake.</p>
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>why</th><th>means</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>local-only</code></td><td><code>allowSubstitutes = false</code>, so nix builds it even when a cache has it</td></tr>
+        <tr><td><code>fetch</code></td><td>a fixed-output download no cache has; the build fetches it</td></tr>
+        <tr><td><code>overridden</code></td><td>differs from nixpkgs' own; the diff names the attributes and inputs</td></tr>
+        <tr><td><code>unfree</code></td><td>identical to nixpkgs', which Hydra skips as unfree</td></tr>
+        <tr><td><code>not-built-by-hydra</code></td><td>identical, but <code>meta.broken</code> or <code>meta.hydraPlatforms</code> keeps Hydra off it</td></tr>
+        <tr><td><code>newer-than-cache</code></td><td>identical, and that nixpkgs' <code>hello</code> isn't cached either</td></tr>
+        <tr><td><code>no-counterpart</code></td><td>no nixpkgs attribute matches its pname (it says what it tried)</td></tr>
+        <tr><td><code>unknown</code></td><td>none of the above could be shown, and it says why</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>It never guesses. No evidence, no category.</p>
 
   <h2>Install</h2>
-  <pre><code>cargo install nix-why-build</code></pre>
+  <p>Run it straight from the flake, or put it on your <code>PATH</code>.</p>
+  <pre><code>nix run github:mlavrinenko/nix-why-build -- .#nixosConfigurations.&lt;host&gt;
+cargo install nix-why-build</code></pre>
 
-  <p>Or download a binary from the
-    <a href="https://github.com/mlavrinenko/nix-why-build/releases/latest">latest release</a>.
+  <p>Every release also lands on crates.io and as a binary on the
+    <a href="https://github.com/mlavrinenko/nix-why-build/releases/latest">releases page</a>.
+    The <a href="https://github.com/mlavrinenko/nix-why-build#readme">README</a> has the rest, like <code>--json</code> output and the Rust library.
   </p>
 
   <footer>
