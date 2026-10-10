@@ -78,3 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the report, `11 local-only: cuda-merged-12.9, gimp-with-plugins-3.0.8, ...`,
   with one `why` and the merged `wanted by`. On tank the report went from 135
   lines in 39 groups to 105 lines in 29. `--json` still lists every root.
+- `wanted by` names each option once per group, with the files of every root
+  that sets it: `environment.systemPackages (apps/audiocpp.nix,
+  nixpkgs:nixos/modules/programs/steam.nix +3)` where the option used to
+  fill both slots with a file each.

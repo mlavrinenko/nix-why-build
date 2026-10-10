@@ -167,19 +167,26 @@ impl Group<'_> {
             .join(", ")
     }
 
-    /// The options pulling in any of the roots, once each; none when the
-    /// toplevel is all there is to say.
+    /// The options pulling in any of the roots, once each with the files of
+    /// every root that sets it, first seen first; none when the toplevel is
+    /// all there is to say.
     fn options(&self) -> Vec<String> {
-        let mut options: Vec<String> = self
-            .roots
-            .iter()
-            .flat_map(|root| &root.requested_by)
-            .map(wanted_by)
-            .collect();
+        let mut merged: Vec<Requested> = Vec::new();
+        for request in self.roots.iter().flat_map(|root| &root.requested_by) {
+            let Some(seen) = merged.iter_mut().find(|seen| seen.option == request.option) else {
+                merged.push(request.clone());
+                continue;
+            };
+            for file in &request.files {
+                if !seen.files.contains(file) {
+                    seen.files.push(file.clone());
+                }
+            }
+        }
+        let mut options: Vec<String> = merged.iter().map(wanted_by).collect();
         options.sort_unstable_by(|left, right| {
             rank(left).cmp(&rank(right)).then_with(|| left.cmp(right))
         });
-        options.dedup();
         if options == ["toplevel"] {
             options.clear();
         }

@@ -452,3 +452,30 @@ fn only_local_only_roots_fold_and_the_folded_group_comes_last() {
         )
     );
 }
+
+#[test]
+fn a_group_names_an_option_once_with_the_files_of_every_root() {
+    let owner = || vec![cascade("kache-1.0.0", Some("kache"))];
+    let from = |name: &str, files: &[&str]| {
+        let mut root = wanted(
+            root(name, Some(name), false, owner()),
+            &["environment.systemPackages"],
+        );
+        if let [request] = root.requested_by.as_mut_slice() {
+            request.files = files.iter().map(|file| (*file).to_owned()).collect();
+        }
+        root
+    };
+    let report = report(
+        vec![
+            from("a", &["apps/a.nix", "apps/shared.nix"]),
+            from("b", &["apps/b.nix", "apps/a.nix"]),
+        ],
+        vec![],
+        vec![],
+    );
+    assert_eq!(
+        report.human(),
+        "2 roots: a, b\n  why unknown: test\n  wanted by environment.systemPackages (apps/a.nix, apps/shared.nix +1)\n  drags in kache-1.0.0\n"
+    );
+}

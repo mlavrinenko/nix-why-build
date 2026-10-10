@@ -33,7 +33,7 @@ llama-cpp-0.5.0
 ...
 11 local-only: cuda-merged-12.9, gimp-with-plugins-3.0.8, krita-6.0.2.1 (+8 more)
   why local-only: allowSubstitutes = false: nix builds it even when a cache has it
-  wanted by environment.systemPackages (apps/audiocpp.nix), environment.systemPackages (apps/llama-cpp-16gb.nix) (+15 more)
+  wanted by environment.systemPackages (apps/audiocpp.nix, nixpkgs:nixos/modules/programs/steam.nix +3), home-manager.users.tank.home.packages (apps/simple-packages.nix, apps/krita.nix) (+10 more)
 523 roots in 29 groups, 52 packages to build, 1621 more without a pname
 ```
 
