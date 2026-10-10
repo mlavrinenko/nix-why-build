@@ -25,7 +25,7 @@ groups:
       src/modules_tests.rs: 74049811fac1584c662aacbf133301e7e27b257525dd2a9db42d99b405249bad
       src/nix_counterparts_tests.rs: c596f587b2c2d86fc45bd76cc8a664c98930777b94e09c6921400d18a57c69f6
       src/nix_index_tests.rs: 556de95404f9a994ae60249db4d2a509837238c47c835c4b54fae85c5a54eae5
-      src/nix_tests.rs: ddc72707c5f050b21933258420ff321b8fe721aaff66bd70df7e17e731a082bf
+      src/nix_tests.rs: 0f1121334572e0dab2d997bbadf3d1a3b005ff74bdccd611db1994de6973d4dd
       src/progress.rs: 15251bf0c3d0583e135f27acac9e267d17997c909d8350de58d4c7768c4893d4
       src/reason.rs: b3f6db31a9aa86a617ab7a09f15dc75b78676cff998059129ee7caaf5cc99102
       src/reason_tests.rs: 6423411c5e9550864f7f927da5fb5c9bd400e90fa060dd1063ffda97beb6bfa5
@@ -45,13 +45,13 @@ groups:
       www/index.html: 35a390effd7c6f964b03b8834f0bf4a6d9aa86050292f1572ea7f45146e748b6
   dev-docs:
     source:
-      .config/nextest.toml: 05097dd107b7bc32f65ffbfaffdc75fb95b8f00d155d266d7b21d042c6790857
+      .config/nextest.toml: 62ff4bbde114658aced2e28b106763419c767b6df9955573e012e7304bab3e23
       .mmz/config.yaml: 33007085872b39ae244fbe5201446cac5a3cf4969dd006a8c41564b2d4149844
       Justfile: a642d7aadc7dbc5130b273d6131cde1c4bcbc7506a75516279e9fbb35e138c9c
       flake.nix: c8c973239e173bfc3e5023230fdea91e93d1a565efc43ffba06ddd506cb21fad
     dependents:
-      AGENTS.md: 3c5ccbbb6be40327b98cc2b75f830e7944a43b8984493e694db71e4daf0f8e06
-      CONTRIBUTING.md: b05a3b0f6b4e174fda5abe01290ae54be9a477404ea5b057969a7507d8af72a3
+      AGENTS.md: 76d47a042fd064e18223e5a64ea79597868fc3d17c126c04f6e491c4a616b2ae
+      CONTRIBUTING.md: 02dae126b03344e462e5dc46c040d237da23da5e9ee2f7cc586d15c55807746e
   release-notes:
     source:
       Cargo.toml: 92bbc5bbc6d5a8ae0e183b5a5efa3f0fa9e56a1368436d943316d6743a549bf0

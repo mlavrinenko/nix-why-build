@@ -18,7 +18,7 @@ experimental = ["setup-scripts"]
 [profile.default]
 status-level = "fail"
 
-# The tests that evaluate src/*.nix with the real `nix` write derivations; a
+# setup script points them at an in-memory store (see src/nix_tests.rs) so the
 # setup script points them at a scratch store (see src/nix_tests.rs) so the
 # real one stays untouched. The script exports NIX_REMOTE to them alone.
 [scripts.setup.nix-scratch-store]

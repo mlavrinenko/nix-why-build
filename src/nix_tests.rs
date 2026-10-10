@@ -9,13 +9,15 @@
 //! `nix_index_tests.rs`.
 //!
 //! Reading a `.drvPath` writes the `.drv` into the store, so the tests run
-//! against a scratch store: nextest's setup script
+//! against an in-memory one: nextest's setup script
 //! (`tests/support/nix-scratch-store.sh`, wired in `.config/nextest.toml`)
-//! exports `NIX_REMOTE=local?root=target/nix-scratch` to them alone. Not
-//! `nix eval --read-only`: that is a flag, and the entry points fix their own
-//! arguments, so passing it would take a hook in product code, while an
-//! environment variable reaches them unchanged. It also leaves the
-//! instantiation the product relies on to run.
+//! exports `NIX_REMOTE=dummy://?read-only=false` to them alone. Each `nix`
+//! process starts with it empty and drops it on exit, so parallel tests share
+//! nothing and no read-only store path is left under `target/` to stop
+//! `cargo clean`. Not `nix eval --read-only`: that is a flag, and the entry
+//! points fix their own arguments, so passing it would take a hook in product
+//! code, while an environment variable reaches them unchanged. It also leaves
+//! the instantiation the product relies on to run.
 
 #[path = "nix_index_tests.rs"]
 mod index;
@@ -26,8 +28,8 @@ mod lookups;
 fn scratch_store() {
     let store = std::env::var("NIX_REMOTE").unwrap_or_default();
     assert!(
-        store.contains("nix-scratch"),
-        "run these with `just test`: nextest's setup script exports the scratch store (NIX_REMOTE={store:?})"
+        store.starts_with("dummy://"),
+        "run these with `just test`: nextest's setup script exports the in-memory store (NIX_REMOTE={store:?})"
     );
 }
 

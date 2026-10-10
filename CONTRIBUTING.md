@@ -38,7 +38,7 @@ coverage, so anything there is untested by default.
 - `src/nix_tests.rs` evaluates `src/counterparts.nix` and `src/index.nix` with
   the real `nix` on the fixtures in `tests/fixtures/`, offline. They write
   `.drv` files, so a nextest setup script (`tests/support/nix-scratch-store.sh`)
-  hands them a scratch store under `target/nix-scratch` through `NIX_REMOTE`,
+  hands them an in-memory store (`dummy://?read-only=false`) through `NIX_REMOTE`,
   and they fail under plain `cargo test`. Run them with `just test`.
 - Near the linecop limit, `just fix-check` ejects an inline `#[cfg(test)]`
   module into a sibling `_tests.rs` via
