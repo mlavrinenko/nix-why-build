@@ -47,7 +47,7 @@ groups:
     source:
       .config/nextest.toml: 367ed9a814800c344a521d1f326dca5072195b9c2c3afd620257b4136e2abb3e
       .mmz/config.yaml: d1364468d61bd48b9ddf8d1f3fffd70e400873f00656c6db11c5cdab4b2adc4f
-      Justfile: bd560f447157a6bcdc59c20f0cb49394d876a6b60e98db7b64b6f6e509f8b4a0
+      Justfile: 56ac59e3942d928aa9204c538b8a8495e00db9831b90c41d4bbe35d2d279d584
       flake.nix: c8c973239e173bfc3e5023230fdea91e93d1a565efc43ffba06ddd506cb21fad
       scripts/cover.sh: fc2943107746718e75b3d07092915cb60db0885b0f726fdc3b566ab4aeb292af
       scripts/crap.sh: ff662ab839dffe961dcee086f59b550e2e7a84d42819b60b56ec9080a83a3a5f

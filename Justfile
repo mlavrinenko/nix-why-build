@@ -164,7 +164,7 @@ release VERSION *FLAGS:
 [doc("Audit dependencies: advisories, licenses, bans (needs network)")]
 [group("extra")]
 deny:
-    cargo deny check --hide-inclusion-graph advisories licenses bans
+    scripts/quiet.sh cargo deny check --hide-inclusion-graph advisories licenses bans
 
 [doc("List newer dependency versions (needs network)")]
 [group("extra")]
