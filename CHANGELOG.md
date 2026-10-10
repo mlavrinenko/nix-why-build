@@ -99,3 +99,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`nix build .#static`), so they start on NixOS, where the glibc binaries
   built on Ubuntu found no `/lib64/ld-linux`. The Windows binary is gone: nix
   does not run there.
+- The library exports only `explain`, `Options`, `Error`, `Report` with its
+  `Root`, `Package`, `Requested`, `Cascade` and `Unknown`, `Reason` and
+  `Diff`. The modules behind them (`cache`, `walk`, `roots` and the rest) are
+  private, and the structs and enums are `#[non_exhaustive]`, so a field or a
+  category can be added without a breaking release. Build `Options` with
+  `Options::new` plus `with_substituters`, `with_trusted_keys` and
+  `with_store_dir`.

@@ -30,8 +30,9 @@ pub enum Availability {
     },
 }
 
-/// Errors building a [`Substituters`] set.
+/// Why the set of substituters to ask could not be built.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum CacheError {
     /// A trusted public key does not parse as `name:base64`.
     #[error("trusted key {key:?}: {reason}")]
@@ -147,6 +148,7 @@ impl Substituters {
     }
 
     /// Caps how many paths are asked about at once (default 256, minimum 1).
+    #[cfg(test)]
     #[must_use]
     pub fn with_concurrency(mut self, concurrency: usize) -> Self {
         self.concurrency = concurrency.max(1);
@@ -157,6 +159,7 @@ impl Substituters {
     /// 1.5 s). The retry gets eight times as long; a second stall counts as
     /// unreachable and disables the substituter. Rare stalled requests
     /// otherwise set the pace of a whole walk level.
+    #[cfg(test)]
     #[must_use]
     pub fn with_patience(mut self, patience: std::time::Duration) -> Self {
         self.patience = patience;

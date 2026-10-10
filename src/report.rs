@@ -15,6 +15,7 @@ use crate::walk::Graph;
 /// The answer: the roots of what gets built, the rest it drags in, and
 /// what could not be decided.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Report {
     /// The `.drv` the walk started from.
     pub toplevel: String,
@@ -32,6 +33,7 @@ pub struct Report {
 
 /// One derivation that gets built.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Package {
     /// The derivation name, `pname-version` for a package.
     pub name: String,
@@ -45,6 +47,7 @@ pub struct Package {
 
 /// A derivation built while every input it uses is served.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Root {
     /// The derivation name.
     pub name: String,
@@ -66,6 +69,7 @@ pub struct Root {
 
 /// One option that pulls a root in.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Requested {
     /// The option, like `environment.systemPackages`, or `toplevel` when no
     /// glue node stands between the toplevel and the root.
@@ -85,6 +89,7 @@ pub struct Requested {
 
 /// A derivation built only because a root below it is.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Cascade {
     /// The derivation name.
     pub name: String,
@@ -98,6 +103,7 @@ pub struct Cascade {
 
 /// One derivation with no answer.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Unknown {
     /// The `.drv` path.
     pub drv: String,
@@ -108,7 +114,7 @@ pub struct Unknown {
 impl Report {
     /// Collects the report from a finished walk and its split.
     #[must_use]
-    pub fn new(graph: &Graph, split: &Split, substituters: &Substituters) -> Self {
+    pub(crate) fn new(graph: &Graph, split: &Split, substituters: &Substituters) -> Self {
         let parents = Parents::of(graph);
         let mut roots: Vec<Root> = split
             .roots
@@ -146,7 +152,7 @@ impl Report {
 
     /// Sets each root's reason, by `.drv` path; roots not in `reasons` keep
     /// theirs.
-    pub fn set_reasons(&mut self, reasons: &HashMap<String, Reason>) {
+    pub(crate) fn set_reasons(&mut self, reasons: &HashMap<String, Reason>) {
         for root in &mut self.roots {
             if let Some(reason) = reasons.get(&root.drv) {
                 root.reason = reason.clone();
@@ -156,7 +162,7 @@ impl Report {
 
     /// Resolves each request against the configuration's option index: the
     /// full option name, and the module files that set it, labelled.
-    pub fn locate(&mut self, index: &Index, labels: &Labels) {
+    pub(crate) fn locate(&mut self, index: &Index, labels: &Labels) {
         for request in self
             .roots
             .iter_mut()

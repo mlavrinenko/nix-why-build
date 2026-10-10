@@ -120,13 +120,22 @@ That's one root, trimmed. The full report also has `toplevel`,
 
 ## As a library
 
-```rust
-let options = nix_why_build::Options::new(".#nixosConfigurations.tank");
-let report = nix_why_build::explain(&options).await?;
-for root in &report.roots {
-    println!("{}: {} {}", root.name, root.reason.category(), root.reason.detail());
+```rust,no_run
+#[tokio::main]
+async fn main() -> Result<(), nix_why_build::Error> {
+    let options = nix_why_build::Options::new(".#nixosConfigurations.tank");
+    let report = nix_why_build::explain(&options).await?;
+    for root in &report.roots {
+        println!("{}: {} {}", root.name, root.reason.category(), root.reason.detail());
+    }
+    Ok(())
 }
 ```
+
+The whole surface is `explain`, `Options` (add `with_substituters`,
+`with_trusted_keys` and `with_store_dir` to pin the caches or the store),
+`Report` with its `Root`s, and `Reason`. Everything else stays private and the
+types are `#[non_exhaustive]`, so a new field never breaks your build.
 
 ## Install
 

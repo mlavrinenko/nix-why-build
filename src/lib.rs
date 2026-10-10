@@ -13,21 +13,28 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! Only the items re-exported below are public; the modules behind them are
+//! not:
+//!
+//! ```compile_fail,E0603
+//! use nix_why_build::walk;
+//! ```
 
-pub mod cache;
-pub mod config;
-pub mod counterparts;
-pub mod diff;
-pub mod drv;
-pub mod eval;
-pub mod human;
-pub mod lookup;
-pub mod modules;
-pub mod reason;
-pub mod report;
-pub mod requester;
-pub mod roots;
-pub mod walk;
+mod cache;
+mod config;
+mod counterparts;
+mod diff;
+mod drv;
+mod eval;
+mod human;
+mod lookup;
+mod modules;
+mod reason;
+mod report;
+mod requester;
+mod roots;
+mod walk;
 
 #[cfg(test)]
 extern crate self as nix_why_build;
@@ -37,10 +44,47 @@ mod fixture_tests;
 
 use std::path::PathBuf;
 
-pub use report::Report;
+pub use cache::CacheError;
+pub use diff::Diff;
+pub use eval::EvalError;
+pub use reason::Reason;
+pub use report::{Cascade, Package, Report, Requested, Root, Unknown};
+
+/// Compiles the README's library example, so it cannot rot.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
 
 /// What to explain, and against which caches.
+///
+/// Build it with [`Options::new`] and the `with_*` methods; the struct is
+/// `#[non_exhaustive]`, so a field added later breaks no caller.
+///
+/// ```
+/// let options = nix_why_build::Options::new(".#nixosConfigurations.tank")
+///     .with_substituters(vec!["https://cache.nixos.org".to_owned()])
+///     .with_trusted_keys(vec!["cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=".to_owned()])
+///     .with_store_dir("/nix/store");
+/// assert_eq!(options.installable, ".#nixosConfigurations.tank");
+/// assert_eq!(
+///     options.substituters,
+///     Some(vec!["https://cache.nixos.org".to_owned()])
+/// );
+/// assert_eq!(options.store_dir, std::path::PathBuf::from("/nix/store"));
+/// ```
+///
+/// A struct literal does not compile outside this crate:
+///
+/// ```compile_fail,E0639
+/// let _ = nix_why_build::Options {
+///     installable: String::new(),
+///     substituters: None,
+///     trusted_keys: None,
+///     store_dir: std::path::PathBuf::new(),
+/// };
+/// ```
 #[derive(Clone, Debug)]
+#[non_exhaustive]
 pub struct Options {
     /// A flake installable (`.#nixosConfigurations.tank`) or a `.drv` path.
     pub installable: String,
@@ -63,10 +107,32 @@ impl Options {
             store_dir: PathBuf::from("/nix/store"),
         }
     }
+
+    /// Asks these substituters instead of nix's own list.
+    #[must_use]
+    pub fn with_substituters(mut self, urls: Vec<String>) -> Self {
+        self.substituters = Some(urls);
+        self
+    }
+
+    /// Trusts these `name:key` public keys instead of nix's own list.
+    #[must_use]
+    pub fn with_trusted_keys(mut self, keys: Vec<String>) -> Self {
+        self.trusted_keys = Some(keys);
+        self
+    }
+
+    /// Reads `.drv` files from `dir` instead of `/nix/store`.
+    #[must_use]
+    pub fn with_store_dir(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.store_dir = dir.into();
+        self
+    }
 }
 
 /// Why [`explain`] failed.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum Error {
     /// Running or evaluating with nix failed.
     #[error(transparent)]

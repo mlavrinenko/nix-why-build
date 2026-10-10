@@ -230,33 +230,3 @@ pub struct FakeCache {
     pub unknown: Vec<StorePath>,
     pub asked: std::sync::Mutex<Vec<StorePath>>,
 }
-
-impl nix_why_build::walk::Query for FakeCache {
-    async fn query(
-        &self,
-        paths: &[StorePath],
-    ) -> std::collections::HashMap<StorePath, nix_why_build::cache::Availability> {
-        use nix_why_build::cache::Availability;
-        self.asked
-            .lock()
-            .expect("lock")
-            .extend(paths.iter().cloned());
-        paths
-            .iter()
-            .map(|path| {
-                let answer = if self.served.contains(path) {
-                    Availability::Served {
-                        substituter: "fake".to_owned(),
-                    }
-                } else if self.unknown.contains(path) {
-                    Availability::Unknown {
-                        reason: "down".to_owned(),
-                    }
-                } else {
-                    Availability::Missing
-                };
-                (path.clone(), answer)
-            })
-            .collect()
-    }
-}

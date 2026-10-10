@@ -28,12 +28,13 @@ struct Cli {
 async fn main() -> Result<()> {
     env_logger::init();
     let cli = Cli::parse();
-    let options = nix_why_build::Options {
-        installable: cli.installable,
-        substituters: (!cli.substituters.is_empty()).then_some(cli.substituters),
-        trusted_keys: (!cli.trusted_keys.is_empty()).then_some(cli.trusted_keys),
-        store_dir: cli.store_dir,
-    };
+    let mut options = nix_why_build::Options::new(&cli.installable).with_store_dir(cli.store_dir);
+    if !cli.substituters.is_empty() {
+        options = options.with_substituters(cli.substituters);
+    }
+    if !cli.trusted_keys.is_empty() {
+        options = options.with_trusted_keys(cli.trusted_keys);
+    }
     let report = nix_why_build::explain(&options).await?;
     let written = if cli.json {
         writeln!(

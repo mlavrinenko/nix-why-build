@@ -53,7 +53,7 @@ impl Report {
     /// a cache hit; the rest go most named cascades first, then the largest
     /// group, then by name.
     #[must_use]
-    pub fn groups(&self) -> Vec<Group<'_>> {
+    pub(crate) fn groups(&self) -> Vec<Group<'_>> {
         let mut groups: Vec<Group<'_>> = Vec::new();
         for root in self.shown_roots() {
             let cascades: Vec<&Cascade> =
@@ -130,7 +130,7 @@ impl Report {
 
 /// Roots that drag in the same named packages.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Group<'a> {
+pub(crate) struct Group<'a> {
     /// The roots, by name.
     pub roots: Vec<&'a Root>,
     /// The named packages they drag in, nearest first.

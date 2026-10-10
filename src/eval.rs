@@ -79,6 +79,7 @@ pub fn as_drv_path(installable: &str) -> Option<StorePath> {
 
 /// Why evaluation failed.
 #[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
 pub enum EvalError {
     /// `nix` could not be started.
     #[error("run nix: {0}")]

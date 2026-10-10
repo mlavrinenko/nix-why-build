@@ -2,7 +2,9 @@ use nix_derivation::StorePath;
 
 use crate::fixture_tests::{DrvSpec, FakeCache as Fake, FakeStore, absent_drv, spec};
 
-use super::{Graph, Verdict, walk};
+use crate::cache::Availability;
+
+use super::{Graph, Query, Verdict, walk};
 
 fn verdict<'a>(graph: &'a Graph, path: &StorePath) -> Option<&'a Verdict> {
     graph.nodes.get(path).map(|node| &node.verdict)
@@ -215,4 +217,35 @@ async fn a_local_only_derivation_is_built_unasked_and_its_inputs_decided_as_usua
             .expect("lock")
             .contains(&store.output(&glue, "out"))
     );
+}
+
+/// The fixture's cache answers `Query` here, where the walk lives: the
+/// fixture is shared with `tests/cli.rs`, which cannot see this trait.
+impl Query for Fake {
+    async fn query(
+        &self,
+        paths: &[StorePath],
+    ) -> std::collections::HashMap<StorePath, Availability> {
+        self.asked
+            .lock()
+            .expect("lock")
+            .extend(paths.iter().cloned());
+        paths
+            .iter()
+            .map(|path| {
+                let answer = if self.served.contains(path) {
+                    Availability::Served {
+                        substituter: "fake".to_owned(),
+                    }
+                } else if self.unknown.contains(path) {
+                    Availability::Unknown {
+                        reason: "down".to_owned(),
+                    }
+                } else {
+                    Availability::Missing
+                };
+                (path.clone(), answer)
+            })
+            .collect()
+    }
 }

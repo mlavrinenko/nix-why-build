@@ -14,6 +14,7 @@ use crate::drv::{Attrs, DrvError, read_attrs};
 
 /// The differences, each list sorted by name.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[non_exhaustive]
 pub struct Diff {
     /// Attributes only the root sets.
     pub added: Vec<String>,
@@ -36,7 +37,11 @@ impl Diff {
     /// # Errors
     ///
     /// The [`DrvError`] of whichever side cannot be read.
-    pub fn read(store_dir: &Path, theirs: &StorePath, ours: &StorePath) -> Result<Self, DrvError> {
+    pub(crate) fn read(
+        store_dir: &Path,
+        theirs: &StorePath,
+        ours: &StorePath,
+    ) -> Result<Self, DrvError> {
         Ok(Self::between(
             &read_attrs(store_dir, theirs)?,
             &read_attrs(store_dir, ours)?,
@@ -45,7 +50,7 @@ impl Diff {
 
     /// Diffs `ours` (the root) against `theirs` (the counterpart).
     #[must_use]
-    pub fn between(theirs: &Attrs, ours: &Attrs) -> Self {
+    pub(crate) fn between(theirs: &Attrs, ours: &Attrs) -> Self {
         let (theirs_attrs, ours_attrs) = (attributes(theirs), attributes(ours));
         let (theirs_inputs, ours_inputs) = (inputs(theirs), inputs(ours));
         Self {
