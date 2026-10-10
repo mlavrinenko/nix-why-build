@@ -51,6 +51,7 @@ pub struct Substituters {
     keys: Vec<nix_compat::narinfo::VerifyingKey>,
     require_sigs: bool,
     concurrency: usize,
+    patience: std::time::Duration,
     client: reqwest::Client,
 }
 
@@ -101,15 +102,25 @@ impl Substituters {
             list,
             keys,
             require_sigs,
-            concurrency: 64,
+            concurrency: 256,
+            patience: std::time::Duration::from_millis(1500),
             client,
         })
     }
 
-    /// Caps how many narinfo requests run at once (default 64, minimum 1).
+    /// Caps how many paths are asked about at once (default 256, minimum 1).
     #[must_use]
     pub fn with_concurrency(mut self, concurrency: usize) -> Self {
         self.concurrency = concurrency.max(1);
+        self
+    }
+
+    /// How long one narinfo request may take before it is sent again (default
+    /// 1.5 s). The retry gets eight times as long; a second stall is unknown.
+    /// Rare stalled requests otherwise set the pace of a whole walk level.
+    #[must_use]
+    pub fn with_patience(mut self, patience: std::time::Duration) -> Self {
+        self.patience = patience;
         self
     }
 
@@ -132,10 +143,22 @@ impl Substituters {
             .await
     }
 
+    /// Asks the first substituter alone, since it serves most paths; on a
+    /// miss asks the rest at once. The earliest configured hit wins.
     async fn query_one(&self, path: &StorePath) -> Availability {
+        let Some(((first_url, first), rest)) = self.list.split_first() else {
+            return Availability::Missing;
+        };
+        let mut probes = vec![(first_url, self.probe(first, path).await)];
+        if !matches!(probes.first(), Some((_, Probe::Hit))) {
+            let later = rest
+                .iter()
+                .map(|(url, location)| async move { (url, self.probe(location, path).await) });
+            probes.extend(futures::future::join_all(later).await);
+        }
         let mut failure = None;
-        for (url, location) in &self.list {
-            match self.probe(location, path).await {
+        for (url, probe) in probes {
+            match probe {
                 Probe::Hit => {
                     return Availability::Served {
                         substituter: url.clone(),
@@ -166,6 +189,15 @@ impl Substituters {
     }
 
     async fn fetch(&self, url: &str) -> Result<String, Probe> {
+        for patience in [self.patience, self.patience * 8] {
+            if let Ok(answer) = tokio::time::timeout(patience, self.fetch_once(url)).await {
+                return answer;
+            }
+        }
+        Err(Probe::Fail("timed out twice".to_owned()))
+    }
+
+    async fn fetch_once(&self, url: &str) -> Result<String, Probe> {
         let response = self
             .client
             .get(url)

@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 
 use nix_compat::store_path::StorePath;
+use std::sync::Arc;
+use std::time::Duration;
+
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::sync::Barrier;
 
 use super::{Availability, Substituters};
 use crate::fixture_tests::{PUBLIC, SECRET, file_cache, narinfo, narinfo_name};
@@ -23,25 +27,48 @@ async fn ask(subs: &Substituters, path: &StorePath) -> Availability {
     answers.get(path).cloned().expect("an answer per path")
 }
 
-/// Serves `routes` (URL path to status and body) over HTTP/1.1, one request
-/// per connection, and returns the base URL.
 async fn http_cache(routes: HashMap<String, (u16, String)>) -> String {
+    http_cache_gated(routes, None, vec![]).await
+}
+
+/// Serves `routes` (URL path to status and body) over HTTP/1.1, one request
+/// per connection, and returns the base URL. Each response waits for `gate`
+/// when given, then for the `delays` entry of its connection (the last
+/// entry repeats; none means no delay).
+async fn http_cache_gated(
+    routes: HashMap<String, (u16, String)>,
+    gate: Option<Arc<Barrier>>,
+    delays: Vec<Duration>,
+) -> String {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("bind");
     let addr = listener.local_addr().expect("local addr");
     tokio::spawn(async move {
+        let mut connection = 0_usize;
         while let Ok((mut socket, _)) = listener.accept().await {
+            let delay = delays
+                .get(connection)
+                .or(delays.last())
+                .copied()
+                .unwrap_or_default();
+            connection += 1;
             let mut buf = vec![0_u8; 4096];
             let read = socket.read(&mut buf).await.unwrap_or(0);
             let request = String::from_utf8_lossy(buf.get(..read).unwrap_or_default()).into_owned();
             let target = request.split_whitespace().nth(1).unwrap_or("/").to_owned();
+            if let Some(gate) = &gate {
+                gate.wait().await;
+            }
             let (status, body) = routes.get(&target).cloned().unwrap_or((404, String::new()));
             let response = format!(
                 "HTTP/1.1 {status} X\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
                 body.len()
             );
-            let _ = socket.write_all(response.as_bytes()).await;
+            tokio::spawn(async move {
+                tokio::time::sleep(delay).await;
+                let _ = socket.write_all(response.as_bytes()).await;
+            });
         }
     });
     format!("http://{addr}")
@@ -240,4 +267,74 @@ async fn an_unreadable_narinfo_file_is_unknown() {
         ask(&subs, &path).await,
         Availability::Unknown { .. }
     ));
+}
+
+fn serving(path: &StorePath) -> HashMap<String, (u16, String)> {
+    HashMap::from([(
+        format!("/{}", narinfo_name(path)),
+        (200, narinfo(path, Some(SECRET))),
+    )])
+}
+
+#[tokio::test]
+async fn after_the_first_misses_the_rest_are_asked_at_once() {
+    let path = store_path(1, "hello-2.12");
+    let gate = Arc::new(Barrier::new(2));
+    let first = http_cache(HashMap::new()).await;
+    let second = http_cache_gated(HashMap::new(), Some(gate.clone()), vec![]).await;
+    let third = http_cache_gated(serving(&path), Some(gate), vec![]).await;
+    let subs = substituters(&[first, second, third.clone()], true);
+    let answer = tokio::time::timeout(Duration::from_secs(5), ask(&subs, &path))
+        .await
+        .expect("the second and third substituters are asked together");
+    assert_eq!(answer, Availability::Served { substituter: third });
+}
+
+#[tokio::test]
+async fn the_earliest_configured_hit_wins_even_when_a_later_one_answers_first() {
+    let path = store_path(1, "hello-2.12");
+    let first = http_cache(HashMap::new()).await;
+    let slow = http_cache_gated(serving(&path), None, vec![Duration::from_millis(200)]).await;
+    let fast = http_cache(serving(&path)).await;
+    let subs = substituters(&[first, slow.clone(), fast], true);
+    assert_eq!(
+        ask(&subs, &path).await,
+        Availability::Served { substituter: slow }
+    );
+}
+
+/// The retry answers in 300 ms, past the first patience of 100 ms but within
+/// the retry's eightfold one.
+#[tokio::test]
+async fn a_stalled_request_is_retried_once_with_more_patience() {
+    let path = store_path(1, "hello-2.12");
+    let url = http_cache_gated(
+        serving(&path),
+        None,
+        vec![Duration::from_secs(30), Duration::from_millis(300)],
+    )
+    .await;
+    let subs =
+        substituters(std::slice::from_ref(&url), true).with_patience(Duration::from_millis(100));
+    let answer = tokio::time::timeout(Duration::from_secs(5), ask(&subs, &path))
+        .await
+        .expect("the retry answers");
+    assert_eq!(answer, Availability::Served { substituter: url });
+}
+
+#[tokio::test]
+async fn two_stalls_are_unknown_and_say_so() {
+    let path = store_path(1, "hello-2.12");
+    let url = http_cache_gated(serving(&path), None, vec![Duration::from_secs(30)]).await;
+    let subs =
+        substituters(std::slice::from_ref(&url), true).with_patience(Duration::from_millis(50));
+    let answer = tokio::time::timeout(Duration::from_secs(5), ask(&subs, &path))
+        .await
+        .expect("gives up in time");
+    assert_eq!(
+        answer,
+        Availability::Unknown {
+            reason: format!("{url}: timed out twice")
+        }
+    );
 }

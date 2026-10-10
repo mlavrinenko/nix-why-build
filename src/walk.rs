@@ -106,9 +106,16 @@ pub async fn walk<Q: Query>(store_dir: &Path, top: &StorePath, query: &Q) -> Gra
         }
         let level_paths = state.merge_wanted(level);
         let ask = state.unasked_outputs(&level_paths);
+        let started = std::time::Instant::now();
         if !ask.is_empty() {
             state.answers.extend(query.query(&ask).await);
         }
+        log::info!(
+            "level: {} drvs, {} outputs asked in {:?}",
+            level_paths.len(),
+            ask.len(),
+            started.elapsed()
+        );
         level = state.decide(&level_paths);
     }
     Graph {

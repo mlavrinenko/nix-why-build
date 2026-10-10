@@ -18,3 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one per line, with a tally of hidden config glue on stderr; `--json` prints
   the whole report. NixOS, home-manager and nix-darwin configurations resolve
   to what they build. `explain()` is the same thing as a library call.
+- After the first substituter misses, the rest are asked at once, and a
+  request stalled past 1.5 s is sent again: the tank walk went from 23.6 s to
+  about 9 s.

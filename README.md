@@ -53,6 +53,11 @@ $ nix-why-build .#nixosConfigurations.tank \
 A narinfo only counts when a trusted key signed it, just like nix itself
 (unless `require-sigs = false`).
 
+It's quick. On tank (a desktop with five caches) the walk takes about 10 s
+on top of nix's own 17 s evaluation. It asks the first cache alone, since it
+serves most paths, then the rest at once, and resends a request that stalls.
+`RUST_LOG=info` prints the per-level timings.
+
 Want it machine readable? Pass `--json`.
 
 ```json
