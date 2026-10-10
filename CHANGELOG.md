@@ -74,3 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When `nix flake archive` fails, a warning says why (`warning: flake inputs
   unknown: error: boom`) and each root's `why unknown` reads `the flake inputs
   could not be listed` instead of blaming the flake for having no nixpkgs input.
+- Local-only roots that drag in nothing named print as one group at the end of
+  the report, `11 local-only: cuda-merged-12.9, gimp-with-plugins-3.0.8, ...`,
+  with one `why` and the merged `wanted by`. On tank the report went from 135
+  lines in 39 groups to 105 lines in 29. `--json` still lists every root.

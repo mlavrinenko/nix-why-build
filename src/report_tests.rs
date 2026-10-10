@@ -350,3 +350,105 @@ fn a_group_shares_its_reason_or_counts_categories() {
         "3 fetches: a.tgz, b.tgz, c\n  why fetch (2), no-counterpart (1)\n  drags in octrimmer-0.1.1\n"
     );
 }
+
+fn local_only(root: Root) -> Root {
+    Root {
+        reason: super::Reason::LocalOnly,
+        ..root
+    }
+}
+
+const LOCAL_ONLY: &str =
+    "why local-only: allowSubstitutes = false: nix builds it even when a cache has it";
+
+#[test]
+fn local_only_roots_dragging_in_nothing_named_fold_into_one_group() {
+    let report = report(
+        vec![
+            local_only(wanted(
+                root(
+                    "steam-1.0",
+                    Some("steam"),
+                    false,
+                    vec![cascade("etc", None)],
+                ),
+                &["home.packages"],
+            )),
+            local_only(wanted(
+                root("nh-4.4.2", Some("nh"), false, vec![]),
+                &["environment.systemPackages"],
+            )),
+            local_only(root("krita-6.0", Some("krita"), false, vec![])),
+            local_only(root("lsb_release", Some("lsb_release"), false, vec![])),
+        ],
+        vec![],
+        vec![],
+    );
+    assert_eq!(
+        report.human(),
+        format!(
+            "4 local-only: krita-6.0, lsb_release, nh-4.4.2 (+1 more)\n  {LOCAL_ONLY}\n  wanted by environment.systemPackages, home.packages\n"
+        )
+    );
+    assert_eq!(
+        report.summary(),
+        "4 roots in 1 group, 0 packages to build, 0 more without a pname\n"
+    );
+}
+
+#[test]
+fn a_lone_local_only_root_keeps_its_own_header() {
+    let report = report(
+        vec![local_only(root("nh-4.4.2", Some("nh"), false, vec![]))],
+        vec![],
+        vec![],
+    );
+    assert_eq!(report.human(), format!("nh-4.4.2\n  {LOCAL_ONLY}\n"));
+}
+
+#[test]
+fn a_local_only_root_dragging_in_a_named_package_keeps_its_own_group() {
+    let owner = || vec![cascade("kache-1.0.0", Some("kache"))];
+    let report = report(
+        vec![
+            local_only(root("a-1", Some("a"), false, owner())),
+            local_only(root("b-1", Some("b"), false, owner())),
+            local_only(root(
+                "c-1",
+                Some("c"),
+                false,
+                vec![cascade("c-src", Some("c"))],
+            )),
+            local_only(root("nh-4.4.2", Some("nh"), false, vec![])),
+            local_only(root("krita-6.0", Some("krita"), false, vec![])),
+        ],
+        vec![],
+        vec![],
+    );
+    assert_eq!(
+        report.human(),
+        format!(
+            "2 roots: a-1, b-1\n  {LOCAL_ONLY}\n  drags in kache-1.0.0\nc-1\n  {LOCAL_ONLY}\n  drags in c-src\n2 local-only: krita-6.0, nh-4.4.2\n  {LOCAL_ONLY}\n"
+        )
+    );
+}
+
+#[test]
+fn only_local_only_roots_fold_and_the_folded_group_comes_last() {
+    let report = report(
+        vec![
+            local_only(root("aa-1", Some("aa"), false, vec![])),
+            local_only(root("bb-1", Some("bb"), false, vec![])),
+            root("zlib-1.3", Some("zlib"), false, vec![]),
+            root("zstd-1.5", Some("zstd"), false, vec![]),
+        ],
+        vec![],
+        vec![],
+    );
+    assert_eq!(
+        report.human(),
+        format!(
+            "zlib-1.3\n  why unknown: test\nzstd-1.5\n  why unknown: test\n2 local-only: aa-1, bb-1\n  {LOCAL_ONLY}\n"
+        )
+    );
+}

@@ -1,6 +1,7 @@
 //! How the CLI prints a [`Report`]: roots grouped by what they drag in, each
 //! with why it misses and who wants it, then a one-line tally.
 
+use crate::reason::Reason;
 use crate::report::{Cascade, Report, Requested, Root, named};
 
 /// How many cascades a root lists before it says how many more there are.
@@ -17,8 +18,10 @@ const SHOWN_GROUP_ROOTS: usize = 3;
 
 impl Report {
     /// Shown roots, grouped when they drag in the same named packages: a
-    /// custom package's hundred vendored crates read as one line. A group
-    /// names its first three roots; up to six named cascades follow.
+    /// custom package's hundred vendored crates read as one line. Local-only
+    /// roots that drag in nothing named share one group, since no cache can
+    /// fix them. A group names its first three roots; up to six named
+    /// cascades follow.
     #[must_use]
     pub fn human(&self) -> String {
         let mut out = String::new();
@@ -43,9 +46,12 @@ impl Report {
         out
     }
 
-    /// Shown roots, grouped by the named packages they drag in. Roots that
-    /// drag in nothing named stand alone. Most named cascades first, then
-    /// the largest group, then by name.
+    /// Shown roots, grouped by the named packages they drag in. Local-only
+    /// roots that drag in nothing named form one group (see
+    /// [`Group::header`]); other roots that drag in nothing named stand
+    /// alone. The local-only group comes last, as nothing in it can become
+    /// a cache hit; the rest go most named cascades first, then the largest
+    /// group, then by name.
     #[must_use]
     pub fn groups(&self) -> Vec<Group<'_>> {
         let mut groups: Vec<Group<'_>> = Vec::new();
@@ -53,7 +59,11 @@ impl Report {
             let cascades: Vec<&Cascade> =
                 root.cascades.iter().filter(|c| c.pname.is_some()).collect();
             let same = |group: &&mut Group<'_>| {
-                !cascades.is_empty() && same_packages(&group.cascades, &cascades)
+                if cascades.is_empty() {
+                    local_only(root) && group.is_local_only()
+                } else {
+                    same_packages(&group.cascades, &cascades)
+                }
             };
             match groups.iter_mut().find(same) {
                 Some(group) => group.roots.push(root),
@@ -69,10 +79,9 @@ impl Report {
                 .sort_by(|left, right| left.name.cmp(&right.name));
         }
         groups.sort_by(|left, right| {
-            right
-                .cascades
-                .len()
-                .cmp(&left.cascades.len())
+            left.is_local_only()
+                .cmp(&right.is_local_only())
+                .then_with(|| right.cascades.len().cmp(&left.cascades.len()))
                 .then_with(|| right.roots.len().cmp(&left.roots.len()))
                 .then_with(|| left.first_name().cmp(right.first_name()))
         });
@@ -177,15 +186,24 @@ impl Group<'_> {
         options
     }
 
+    /// Whether every root is local-only and drags in nothing named: the
+    /// group nix builds by design, whatever a cache holds.
+    fn is_local_only(&self) -> bool {
+        self.cascades.is_empty() && self.roots.iter().all(|root| local_only(root))
+    }
+
     fn first_name(&self) -> &str {
         self.roots.first().map_or("", |root| root.name.as_str())
     }
 
     /// `name` (with ` (fetch)`) for one root; `N roots: a, b, c (+M more)`
-    /// for several, `fetches` when every one is.
+    /// for several, `fetches` when every one is, `local-only` for the
+    /// local-only group.
     fn header(&self) -> String {
         let [root] = self.roots.as_slice() else {
-            let kind = if self.roots.iter().all(|root| root.fixed_output) {
+            let kind = if self.is_local_only() {
+                "local-only"
+            } else if self.roots.iter().all(|root| root.fixed_output) {
                 "fetches"
             } else {
                 "roots"
@@ -232,6 +250,10 @@ fn wanted_by(request: &Requested) -> String {
         files.push_str(&format!(" +{}", request.files.len() - shown.len()));
     }
     format!("{} ({files})", request.option)
+}
+
+fn local_only(root: &Root) -> bool {
+    matches!(root.reason, Reason::LocalOnly)
 }
 
 fn same_packages(left: &[&Cascade], right: &[&Cascade]) -> bool {

@@ -27,23 +27,24 @@ eglexternalplatform-1.2.1
   wanted by home-manager.users.tank.xdg.configFile."opencode/plugins/octrimmer.js" (apps/agents/opencode/plugins/octrimmer/octrimmer.nix)
   drags in octrimmer-0.1.1-sources, octrimmer-0.1.1
 ...
-krita-6.0.2.1
-  why local-only: allowSubstitutes = false: nix builds it even when a cache has it
-  wanted by home-manager.users.tank.home.packages (apps/krita.nix)
 llama-cpp-0.5.0
   why overridden: vs unstable#pkgsCuda.llama-cpp (cached): postPatch added; buildInputs, cmakeFlags changed; input blas-3 added
   wanted by environment.systemPackages (apps/llama-cpp-16gb.nix), systemd.services.llama-cpp-embed (apps/llama-cpp-16gb.nix, base:apps/gpu-exclusive.nix) (+1 more)
 ...
-523 roots in 39 groups, 52 packages to build, 1621 more without a pname
+11 local-only: cuda-merged-12.9, gimp-with-plugins-3.0.8, krita-6.0.2.1 (+8 more)
+  why local-only: allowSubstitutes = false: nix builds it even when a cache has it
+  wanted by environment.systemPackages (apps/audiocpp.nix), environment.systemPackages (apps/llama-cpp-16gb.nix) (+15 more)
+523 roots in 29 groups, 52 packages to build, 1621 more without a pname
 ```
 
 A **root** is something no cache serves even though everything it needs is
 served. That's where the miss starts. Fix the root and everything it
 **drags in** comes from the cache again. Roots that drag in the same packages
 print as one group, so a custom package's 223 vendored crates are one line.
-A local-only derivation (`allowSubstitutes = false`) is always a root of its
-own, since nix builds it whatever the cache holds and nothing above it misses
-because of it.
+A local-only derivation (`allowSubstitutes = false`) is always a root, since
+nix builds it whatever the cache holds and nothing above it misses because of
+it. No cache can fix those, so the ones that drag in nothing named fold into
+one `local-only` group at the end.
 Config glue (units, `etc`, `system-path`) is cheap, so it's counted, not
 listed.
 
