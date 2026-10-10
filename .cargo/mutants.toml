@@ -1,1 +1,1 @@
-exclude = ["src/main.rs"]
+exclude_globs = ["src/main.rs"]
