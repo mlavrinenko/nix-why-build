@@ -171,19 +171,30 @@ pinned by any assertion.
 
 ## Git Hooks
 
-The hook lives at `.githooks/pre-commit` and is tracked by git, so clones get
-it without a copy step. `just install-hooks` runs
-`git config core.hooksPath .githooks` (idempotent); the dev-shell `shellHook`
-runs that recipe on entry, so a fresh clone's first `nix develop` wires the
-hook and edits to the tracked file take effect live.
+Both hooks live in `.githooks/`, tracked by git. `just install-hooks` runs
+`git config core.hooksPath .githooks`; the dev-shell `shellHook` runs it on
+entry, so a fresh clone's first `nix develop` wires them.
 
-The hook runs `mmz --is-fresh --tag gate` — a freshness assertion that checks
-every gate-tagged rule in `.mmz/config.yaml` already passed against this
-worktree, running nothing of its own. It is cheap enough for every commit.
+- `pre-commit` runs `mmz --is-fresh --tag gate`: every gate-tagged rule in
+  `.mmz/config.yaml` already passed against this worktree. It runs nothing.
+- `commit-msg` runs `mt check --commit-msg` (see Tasks).
+
 Bypass a single commit with `git commit --no-verify`.
+
+## Tasks
+
+The backlog lives in `truth/tasks/`, one Typst file per task, tracked with
+[MindTape](https://github.com/mlavrinenko/mindtape) (`mt`). `truth/goals.typ`
+says what the tool is for; every open task gives each goal a verdict.
+
+- File with `mt add -t feat` (or `fix`, `dev`, `docs`, `finding`, `tweak`).
+  Start with `mt wip <stem>`, close with `mt done <stem>`, each flip staged
+  with the work, and name the task in a `Refs: <stem>` footer.
+- `mt done` refuses until `just check` passed. The flip rewrites a task file,
+  so run `just check` once more before committing.
 
 ## Submitting Changes
 
-1. Run `just check` before submitting — it runs clippy, tests, file size, and drift checks
+1. Run `just check`: fmt, clippy, tests, file size, drift, copy-paste, tasks
 2. Run `just fmt` to format code
 3. Ensure `just cover` meets the 70% threshold

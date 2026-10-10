@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# `[[commits.rules]]` from .mindtape/config.toml over the message being
+# written: a `Refs: <stem>` footer naming a started task, a flip riding with
+# its work, a CHANGELOG entry with a product change.
+set -eo pipefail
+exec mt check --commit-msg "$1"

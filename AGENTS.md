@@ -49,5 +49,8 @@
   is finished on the same tag with `gh workflow run <release workflow> -f
   tag=vX.Y.Z`; a pushed tag never moves.
 - Eating your own dog food: the tool should use itself if applicable.
+- Tasks live in `truth/tasks/` under MindTape: load the `mindtape` skill, use
+  `mt` for every task change, and flip a task with the commit that carries its
+  work (`Refs: <stem>` footer). See Tasks in CONTRIBUTING.md.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for project conventions and code standards.

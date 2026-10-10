@@ -2,3 +2,4 @@
 /target
 /var
 /.cargo/config.toml
+/.mindtape/cache/

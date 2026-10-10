@@ -30,7 +30,7 @@ fix-check: eject clippy-fix fmt check
 # and `mmz --is-fresh --tag gate` asserts they all passed without running any.
 # Per-rule scopes and the `gate` tag live in .mmz/config.yaml.
 [parallel]
-check: (mmz "fmt-check") (mmz "clippy") (mmz "test") (mmz "machete") (mmz "check-file-size") (mmz "check-dry") (mmz "outdatty-check")
+check: (mmz "fmt-check") (mmz "clippy") (mmz "test") (mmz "machete") (mmz "check-file-size") (mmz "check-dry") (mmz "check-tasks") (mmz "outdatty-check")
 
 # Wrap a just recipe in mmz: `just mmz fmt-check` runs `mmz just fmt-check`. The
 # double hop makes mmz the cache identity (rule name `just <recipe>` in
@@ -249,6 +249,11 @@ eject PCT='90':
 # Check for oversized files (fails if any exceed limits)
 check-file-size:
     linecop
+
+# Validate the task backlog (truth/tasks) against .mindtape/config.toml. Fix a
+# finding by repairing the task, never by loosening the config.
+check-tasks:
+    mt check -q
 
 # Copy-paste gate: fail on any duplicated Rust block across the crate.
 check-dry:

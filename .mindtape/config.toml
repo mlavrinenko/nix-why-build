@@ -1,0 +1,307 @@
+# .mindtape/config.toml — nix-why-build's backlog, one Typst file per task.
+# Adapted from MindTape's own config; the rationale behind each rule lives in
+# https://github.com/mlavrinenko/mindtape/blob/main/.mindtape/config.toml.
+extends = ["mindtape-tasks"]
+
+[tasks]
+
+[[tasks.roots]]
+path = "truth/tasks"
+name = "nwb"
+derive-tags = true
+
+# Lifecycle order. `to` gates `mt flip`; `unblocked` refuses wip/done while a
+# `depends-on` target is open.
+[[tasks.status]]
+value = "proposed"
+glyph = "💡"
+color = "blue"
+to = ["accepted", "wip", "cancelled"]
+
+[[tasks.status]]
+value = "accepted"
+glyph = "📋"
+color = "cyan"
+to = ["wip", "cancelled"]
+
+[[tasks.status]]
+value = "wip"
+glyph = "🔨"
+color = "yellow"
+unblocked = true
+to = ["done", "failed", "accepted"]
+
+[[tasks.status]]
+value = "done"
+glyph = "✅"
+color = "green"
+terminal = true
+unblocked = true
+to = ["wip", "cancelled", "failed"]
+
+[[tasks.status]]
+value = "cancelled"
+glyph = "🚫"
+color = "magenta"
+terminal = true
+
+[[tasks.status]]
+value = "failed"
+glyph = "❌"
+color = "red"
+terminal = true
+to = ["wip"]
+
+# ICE score, 0..9, framework only.
+[tasks.priority]
+kind = "int"
+min = 0
+max = 9
+required = "!terminal"
+framework = "ice"
+allow-manual = false
+
+[[tasks.priority.bands]]
+label = "low"
+min = 0
+max = 2
+glyph = "🟢"
+color = "green"
+
+[[tasks.priority.bands]]
+label = "normal"
+min = 3
+max = 6
+glyph = "🟡"
+color = "yellow"
+
+[[tasks.priority.bands]]
+label = "high"
+min = 7
+max = 9
+glyph = "🔴"
+color = "red"
+
+# Judgment required, not size:
+#   0-2  mechanical, fully specified.
+#   3-5  local judgment, one module, one obvious approach.
+#   6-8  cross-cutting design, several defensible approaches.
+#   9    the approach itself is the open question.
+[tasks.difficulty]
+required = "!terminal"
+
+# Non-test source files the task means to touch, per `@source` below.
+[tasks.estimate]
+units = ["src-files"]
+required = "!terminal"
+
+[[tasks.rules]]
+name = "judgment-stays-small"
+when = "!terminal && difficulty >= 3"
+assert = "estimate.src-files <= 5"
+message = "split the decision from the mechanical fan-out instead of widening the cap"
+severity = "error"
+
+[[tasks.rules]]
+name = "src-budget"
+when = 'status == "wip" && has(estimate.src-files)'
+assert = 'changed("staged+worktree", "@source") <= estimate.src-files'
+message = "split the remaining work into a new task and finish the part in hand; keep estimate.src-files as filed, since it records the decomposition"
+severity = "warn"
+
+[[tasks.rules]]
+name = "tweak-lands-done"
+when = 'has_tag("tweak")'
+assert = "terminal"
+message = "file a tweak done, in the commit that makes the change: `mt add -t tweak`; plan anything bigger with another template"
+severity = "error"
+
+# One verdict per goal in truth/goals.typ and truth/process-goals.typ.
+[[tasks.rules]]
+name = "goals"
+when = "!terminal"
+check = { typst = "truth/lib.typ", function = "check-goals", field = "x-goals" }
+severity = "error"
+
+# One milestone and one leaf in flight, no more.
+[[tasks.rules]]
+name = "milestone-wip-cap"
+when = 'status == "wip" && kind == "milestone"'
+assert = 'count(status == "wip" && kind == "milestone") <= 1'
+message = "close or split the open milestone before opening another"
+severity = "error"
+
+[[tasks.rules]]
+name = "leaf-wip-cap"
+when = 'status == "wip" && kind != "milestone"'
+assert = 'count(status == "wip" && kind != "milestone") <= 1'
+message = "finish the open task, or split off what is done and close that, before starting another"
+severity = "error"
+
+[tasks.tags]
+allowed = [
+  "nwb",
+  # Areas.
+  "walk",
+  "cache",
+  "eval",
+  "report",
+  "cli",
+  "api",
+  "tests",
+  "docs",
+  "tooling",
+  "upstream",
+  # A call settled in the body, with no code of its own; may close task-only.
+  "decision",
+  # Filed with `-t finding`: an out-of-scope observation.
+  "found",
+  # Filed with `-t tweak`, done, in the commit that makes the change.
+  "tweak",
+]
+
+# Leaf kinds are commit types; `dev` stands where Conventional Commits puts
+# `chore`. A milestone closes through its leaves.
+[tasks.fields.kind]
+values = ["feat", "fix", "refactor", "docs", "test", "dev", "milestone"]
+required = "!terminal"
+
+# `max` holds what no agent can finish; `agent` holds the rest.
+[tasks.assignee]
+allowed = ["max", "agent"]
+required = "!terminal"
+
+[tasks.comments]
+policy = "forbid"
+
+# The pack's sections plus this repo's `Dogfood`.
+[[tasks.body.headers.rules]]
+name = "section-allowlist"
+action = "allowlist"
+allowed = [
+  { match = "^(Problem|Environment|TO-BE|Source of truth|Changes|Alternatives|Rollback|Out of scope|Dogfood)$" },
+]
+when = "!terminal"
+message = "limit an open task to Problem, TO-BE, Changes, Out of scope and Dogfood, plus its kind's own section"
+
+[[tasks.body.headers.rules]]
+name = "one-dogfood-section"
+path = ["Dogfood"]
+action = "unique"
+when = "!terminal"
+message = "add one Dogfood section saying how this repo will dogfood the task (\"Not applicable\" with a reason opts out)"
+
+[[tasks.body.headers.rules]]
+name = "dogfood-after-out-of-scope"
+action = "order"
+before = ["Out of scope"]
+after = ["Dogfood"]
+when = "!terminal"
+message = "move Dogfood after Out of scope"
+
+[[tasks.body.content.rules]]
+name = "dogfood-non-empty"
+path = ["Dogfood"]
+assert = "non-empty"
+when = "!terminal"
+message = "write how this repo uses the change under Dogfood, or \"Not applicable\" and why"
+
+[[tasks.body.content.rules]]
+name = "dogfood-word-cap"
+path = ["Dogfood"]
+assert = { max-words = 120 }
+when = "!terminal"
+message = "cut this section to under 120 words, or split the task in two"
+
+# What a task's estimate counts: everything but docs, the backlog, the lock
+# watermark and tests.
+[dicts.source]
+case = "exact"
+values = [
+  "!README.md",
+  "!CONTRIBUTING.md",
+  "!AGENTS.md",
+  "!CHANGELOG.md",
+  "!www/**",
+  "!outdatty.lock",
+  "!truth/tasks/**",
+  "!tests/**",
+  "!**/*_tests.rs",
+]
+
+# What ships: the crate's source, minus tests.
+[dicts.product]
+case = "exact"
+values = [
+  "src/**",
+  "!**/*_tests.rs",
+]
+
+[[commits.rules]]
+# mt 0.3.0 reads no `trailers`; restore the `Changelog: none` escape once it does.
+name = "changelog-with-product-change"
+when = 'count(files, "@product") >= 1'
+assert = 'matches(files, "^CHANGELOG[.]md$")'
+message = "add an entry under [Unreleased] in CHANGELOG.md"
+severity = "error"
+
+[[commits.rules]]
+name = "tweak-stays-one-file"
+scope = "task"
+when = 'into("done") && staged(has_tag("tweak"))'
+assert = 'count(files, "@source") <= 1'
+message = "file a planned task for the rest, since a tweak changes one source file"
+severity = "error"
+
+[[commits.rules]]
+name = "refs-task-is-started"
+scope = "task"
+when = "named && staged(exists)"
+assert = 'staged(status == "wip" || terminal)'
+message = "flip the task to wip in the first commit that names it (`mt wip <stem>`, staged with the work)"
+severity = "error"
+
+[views.owner]
+filter = 'assignee == "max" && !terminal'
+sort = ["priority:desc"]
+description = "Open tasks waiting on the maintainer"
+
+[views.agent]
+filter = 'assignee == "agent" && !terminal'
+sort = ["priority:desc"]
+description = "Open tasks an agent can take"
+
+[views.blocked]
+filter = "blocked"
+sort = ["blocks:desc", "priority:desc"]
+columns = ["slug#", "title", "why"]
+description = "Blocked tasks and what each waits on"
+
+[[on.flip]]
+when = 'into("wip") && stale(30)'
+actions = [
+  { gate = true, message = "re-read the scope against today's code, fix what went stale, run `mt review`, then start again" },
+]
+
+# Closing asserts `just check` already passed against this worktree.
+[[on.flip]]
+when = 'into("done") || into("cancelled") || into("failed")'
+actions = [
+  { run = "mmz --is-fresh --tag gate", gate = true, message = "run `just check`, then flip again" },
+]
+
+[add]
+header = ""
+comments = false
+
+[[roles]]
+name = "maintainer"
+
+[[actors]]
+name = "max"
+kind = "human"
+roles = ["maintainer"]
+
+[[actors]]
+name = "agent"
+kind = "llm"

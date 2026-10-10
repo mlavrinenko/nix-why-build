@@ -33,7 +33,7 @@ Prerequisites: [Nix](https://nixos.org/) with flakes enabled.
 direnv allow         # or: nix develop
 just install-hooks   # pre-commit hook running the (memoized) gate
 
-just check           # fmt, clippy, tests, unused deps, file size, drift, copy-paste
+just check           # fmt, clippy, tests, unused deps, file size, drift, copy-paste, tasks
 just deny            # cargo-deny: advisories, licenses, bans (needs network)
 just build
 just test
