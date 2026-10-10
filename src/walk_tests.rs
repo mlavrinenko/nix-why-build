@@ -187,3 +187,32 @@ async fn a_shared_input_is_asked_about_once() {
     assert_eq!(asked.iter().filter(|path| **path == shared_out).count(), 1);
     assert_eq!(built(&graph), ["left", "right", "shared-1", "top"]);
 }
+
+#[tokio::test]
+async fn a_local_only_derivation_is_built_unasked_and_its_inputs_decided_as_usual() {
+    let store = FakeStore::new();
+    let fetched = store.add(&spec("fetched-1"));
+    let missing = store.add(&spec("missing-1"));
+    let (glue, top) = over(
+        &store,
+        &spec("etc-bashrc")
+            .env("allowSubstitutes", "")
+            .input(&fetched, &["out"])
+            .input(&missing, &["out"]),
+        &["out"],
+    );
+    let fake = serving(vec![
+        store.output(&glue, "out"),
+        store.output(&fetched, "out"),
+    ]);
+    let graph = run(&store, &top, &fake).await;
+    assert_eq!(built(&graph), ["etc-bashrc", "missing-1", "top"]);
+    assert_eq!(verdict(&graph, &fetched), Some(&Verdict::Served));
+    assert!(
+        !fake
+            .asked
+            .lock()
+            .expect("lock")
+            .contains(&store.output(&glue, "out"))
+    );
+}

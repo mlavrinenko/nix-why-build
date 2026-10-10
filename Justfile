@@ -293,6 +293,42 @@ deny:
 outdated:
     cargo outdated --workspace
 
+# Pin the walk to nix's own planner: copy INSTALLABLE's derivation closure into
+# a scratch store that holds no outputs, ask `nix build --dry-run` there what
+# it would build, and diff that with this checkout's `--json` `to_build`. Silent
+# when they agree; otherwise it prints each one-sided list and exits 1. The
+# scratch store is a cache: it only ever holds `.drv` files and sources, so
+# reusing it saves the copy without letting an output in. The release build is
+# a `-c` line of its own, the shape that gets the dev shell even when just runs
+# from another project; a relative flake ref (`.#nixosConfigurations.tank`)
+# resolves against where you ran just.
+oracle INSTALLABLE: (build "--release")
+    #!/usr/bin/env bash
+    set -euo pipefail
+    installable='{{ INSTALLABLE }}'
+    case "$installable" in
+        .*) installable='{{ invocation_directory() }}'/"$installable" ;;
+    esac
+    work=$(mktemp -d)
+    trap 'rm -rf "$work"' EXIT
+    store="${XDG_CACHE_HOME:-$HOME/.cache}/nix-why-build/oracle-store"
+    mkdir -p "$store"
+    target/release/nix-why-build --json "$installable" > "$work/report.json"
+    top=$(jq -r .toplevel "$work/report.json")
+    jq -r '.to_build[].drv' "$work/report.json" | sort > "$work/ours"
+    nix copy --quiet --no-check-sigs --to "local?root=$store" "$top"
+    nix build --quiet --dry-run --store "local?root=$store" "$top^*" 2> "$work/plan"
+    awk '/will be built:$/ { on = 1; next } /^[^ ]/ { on = 0 } on { print $1 }' "$work/plan" \
+        | sort > "$work/nix"
+    only_ours=$(comm -23 "$work/ours" "$work/nix")
+    only_nix=$(comm -13 "$work/ours" "$work/nix")
+    [ -z "$only_ours$only_nix" ] && exit 0
+    echo "only nix-why-build builds ($(grep -c . <<< "$only_ours" || true)):"
+    printf '%s\n' "$only_ours" | sed '/^$/d; s/^/  /'
+    echo "only nix builds ($(grep -c . <<< "$only_nix" || true)):"
+    printf '%s\n' "$only_nix" | sed '/^$/d; s/^/  /'
+    exit 1
+
 # Put this checkout's binary on PATH (~/.cargo/bin). The contract ~/.nix's
 # `just install nix-why-build` calls.
 install:

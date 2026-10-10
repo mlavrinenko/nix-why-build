@@ -11,8 +11,8 @@ groups:
       src/counterparts_tests.rs: 560b4cf92412943715b74be90607bf41cdbeefc2e65e22e113984af213d77ef9
       src/diff.rs: 1952914afecb8ce419814f72b60017fc6ed3f3fba0b18a21312d104427449f98
       src/diff_tests.rs: a5f3150b94abe644590e1700dc39e6530434dfa0d42dc36b2579b6b70023f503
-      src/drv.rs: 1825f2a70fc125b1fc6057625b2c6a68ff1583b5a27b4f3dc444475be9921f36
-      src/drv_tests.rs: 39e8d1ca3b5aa2bef1c09b49e3f8a37a8fbe6bc8d9d3ff5f3b5642b05443cb2f
+      src/drv.rs: e9333543a2648f43cbc4750ea99829d701c63cc23a6e0175cd1e88ded94d9d35
+      src/drv_tests.rs: 42bb426a32f105c418093c5bce1ee127adada04cad920dbecad6afd626a7298b
       src/eval.rs: 7f5b10469d7d00be0e03355a105e23198bb6ba277c877b44c40b654133f16ad9
       src/human.rs: 63b50a0c20abc33209d933f406a218006c71a592ba2045ec52a3cf1592088188
       src/index.nix: 84f328d1382adb201c2df743fea30f06bc6f8771a4686bba3bf50752fb958c3e
@@ -22,30 +22,30 @@ groups:
       src/main.rs: 1c3d120449953bfd93edfa8424e2962928cdca5f8dcc60390f8ce264dfd0ef72
       src/modules.rs: 997b732a6f8045833d63c1ee49a74956fde63285b28c7fb8961a2b723e74f430
       src/modules_tests.rs: 2d5db92667cab9ad2a0936a1523532daf42ca7dc7fe9eb7e28dfd7eb4e5bceca
-      src/reason.rs: ae2b90e8c0b4db0b7fdec4cdf62f344b9c3ed4689589d11266da0f927291f0fd
-      src/reason_tests.rs: d4e2fbe8cec1cedfaf488c3c61e6c7ff6f3be31ff8d6b84372e55a54dd87b55d
+      src/reason.rs: d186aaf188c67bb32fd4e887ac62d8d59456ca8e2cb0044b828c4cc30caab69a
+      src/reason_tests.rs: 6423411c5e9550864f7f927da5fb5c9bd400e90fa060dd1063ffda97beb6bfa5
       src/report.rs: 0ac4ba7a86e89a88bdf45cb0314f81aa554b79e5b728b040d0f1364a04fc7d9e
       src/report_tests.rs: 1c76a549fc6fc6ab540c88b782135d1edc7fd07066d5028d676011c2930f874a
       src/requester.rs: 97d0879ff73eab709ecfc3312c9ef564aa146294d32758bed29184a22b90da04
       src/requester_tests.rs: 4ce862bcee59ed29955aa10ffae6e6eab93d3ddb759838eaa54f2780057d26fa
       src/roots.rs: 0c248741f05021dd73b84902f918364910a2636d6a2b9bed5f9a635630c31678
       src/roots_tests.rs: 7545f5404633de720a599bb318d6eda54c57d6b185b5e74d25ac7ca2f6d0aba1
-      src/walk.rs: c22eef35b32f5e2816318531771717e7c2504b65b975b50d7d7c686143fbb1a1
-      src/walk_tests.rs: 336583544b0f1fdbbdd4c88ab4231770ad48c4d8784cf860c8b74c2097fe208b
+      src/walk.rs: 383b8a7721c50f075375b98cae33a43d8c7b17f5978d131b2f996caa38afae4b
+      src/walk_tests.rs: 5d31c6850c225f9ef859b112f6620456fe09d1acb792aeb820d3723241ba1a4c
     dependents:
-      README.md: b361f7c16e5468ef4590c48048837721476ce8ddf62c6e833b8e0237ae927241
+      README.md: 5536830f063fad3bc96051122e48efb351146216b5b9623f98bea4bf15cc989a
       www/index.html: 3080a6ff1ece1ebc43db5b4b0d58c6ef50668f2b418633a38cc615d62580443c
   dev-docs:
     source:
       .config/nextest.toml: e2eda0853a3c73ff4422e4d9a5f670c1aef1705b2281379dfdffdab04e837a79
       .mmz/config.yaml: 3b0f22e8147362b850994804c86bf4735056c3da6606f598c2df205143a2a270
-      Justfile: 9d7e6ce1f664bf8b91150b19f176219c06c35a05312b1d468fef1d4793a19d57
+      Justfile: 65b5730ae0a5156871c04afa2554a4949e831e3e4013ef6d0df4a7422ea40e05
       flake.nix: 0d5f515ee6121d226872b35fc2e3afc038dc89df08ab66b9fa108c52fca62c15
     dependents:
-      AGENTS.md: e3c4884d40700feacae8e5996a150bf5e731bcaa791e6ef8c24aab77f8a180ac
+      AGENTS.md: 2b55c7d20b2fccb5f79ffae75b29351294062af8d29ae9275cb47ef47082bfad
       CONTRIBUTING.md: 3bdf57a55cc92e36f3f6b1484973222eee826da77b48664765a4365d0c8f7dba
   release-notes:
     source:
       Cargo.toml: ed6c13a236c92abac8f9395e0f7c9204d22a9e449e9f706b7a3381d0c9950a60
     dependents:
-      CHANGELOG.md: a4673fc27ee02151bd38c514631cc091c4920bf606f10e11bc32fcd320e91dec
+      CHANGELOG.md: d217d49f4bb73004cd8d92057f085b168314f37adce5d4bea94f2453a2b34951

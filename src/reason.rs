@@ -14,6 +14,8 @@ use crate::drv::{Drv, read_attrs};
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "category", rename_all = "kebab-case")]
 pub enum Reason {
+    /// `allowSubstitutes = false`: nix builds it without asking a cache.
+    LocalOnly,
     /// A fixed-output fetch no cache has: the build downloads it.
     Fetch {
         /// Where it downloads from.
@@ -64,6 +66,7 @@ impl Reason {
     #[must_use]
     pub fn category(&self) -> &'static str {
         match self {
+            Self::LocalOnly => "local-only",
             Self::Fetch { .. } => "fetch",
             Self::Overridden { .. } => "overridden",
             Self::Unfree { .. } => "unfree",
@@ -78,6 +81,9 @@ impl Reason {
     #[must_use]
     pub fn detail(&self) -> String {
         match self {
+            Self::LocalOnly => {
+                "allowSubstitutes = false: nix builds it even when a cache has it".to_owned()
+            }
             Self::Fetch { urls } => urls.first().map_or_else(
                 || "no cache has the source".to_owned(),
                 |url| format!("no cache has {url}"),
@@ -180,6 +186,9 @@ pub enum Lookup<'a> {
 /// Classifies `root`, reading `.drv` files from `store_dir`.
 #[must_use]
 pub fn classify(store_dir: &Path, root: &Drv, lookup: Lookup<'_>, facts: &Facts) -> Reason {
+    if root.local_only {
+        return Reason::LocalOnly;
+    }
     if root.fixed_output {
         return Reason::Fetch {
             urls: read_attrs(store_dir, &root.path)

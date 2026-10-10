@@ -9,8 +9,9 @@ you built yesterday quietly drops off the list.
 
 `nix-why-build` asks the binary caches instead. It walks the derivation graph
 from your system's toplevel and stops wherever a substituter serves the
-output, the same cut nix makes on an empty store. Same answer on your laptop
-and on a fresh box.
+output, the same cut nix makes on an empty store. Anything with
+`allowSubstitutes = false` gets built anyway, cache or not, because nix does
+that too. Same answer on your laptop and on a fresh box.
 
 ## Usage
 
@@ -52,6 +53,7 @@ in every nixpkgs input of your flake (and `pkgsCuda` when it uses CUDA).
 
 | why | means |
 | --- | --- |
+| `local-only` | `allowSubstitutes = false`, so nix builds it even when a cache has it |
 | `fetch` | a fixed-output download no cache has; the build fetches it |
 | `overridden` | differs from nixpkgs' own; the diff names the attributes and inputs |
 | `unfree` | identical to nixpkgs', which Hydra skips as unfree |
@@ -139,6 +141,7 @@ just install-hooks   # pre-commit hook running the (memoized) gate
 
 just check           # fmt, clippy, tests, unused deps, file size, drift, copy-paste, tasks
 just deny            # cargo-deny: advisories, licenses, bans (needs network)
+just oracle .#nixosConfigurations.tank  # diff to_build with nix's own dry-run plan
 just build
 just test
 just cover           # code coverage via cargo-llvm-cov (70% minimum)

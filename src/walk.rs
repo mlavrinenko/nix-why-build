@@ -163,6 +163,13 @@ pub async fn walk<Q: Query>(store_dir: &Path, top: &StorePath, query: &Q) -> Gra
     }
 }
 
+fn local_only(nodes: &HashMap<StorePath, Node>, path: &StorePath) -> bool {
+    nodes
+        .get(path)
+        .and_then(|node| node.drv.as_ref())
+        .is_some_and(|drv| drv.local_only)
+}
+
 struct State {
     nodes: HashMap<StorePath, Node>,
     answers: HashMap<StorePath, Availability>,
@@ -235,7 +242,7 @@ impl State {
 
     fn unasked_outputs(&self, level: &[StorePath]) -> Vec<StorePath> {
         let mut ask: HashSet<StorePath> = HashSet::new();
-        for path in level {
+        for path in level.iter().filter(|path| !local_only(&self.nodes, path)) {
             for out in self.wanted_outputs(path) {
                 if !self.answers.contains_key(out) {
                     ask.insert(out.clone());
@@ -283,6 +290,9 @@ impl State {
     }
 
     fn verdict_of(&self, path: &StorePath) -> Verdict {
+        if local_only(&self.nodes, path) {
+            return Verdict::Build;
+        }
         let mut unknown = None;
         for out in self.wanted_outputs(path) {
             match self.answers.get(out) {

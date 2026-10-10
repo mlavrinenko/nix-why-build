@@ -52,3 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Apache-2.0 `nix-derivation` and `nix-narinfo` parse `.drv` files and
   narinfos and verify cache signatures, so the crate stays MIT and publishes
   to crates.io.
+- A derivation with `allowSubstitutes = false` counts as built, as nix builds
+  it even when a cache serves it, and the walk decides its inputs as usual.
+  Such a root says `why local-only`. `to_build` now equals nix's own dry-run
+  plan on an empty store: 1673 derivations on tank, where it had 1469.
+- `just oracle <installable>` diffs `to_build` with `nix build --dry-run` in a
+  scratch store holding only the derivation closure; it prints nothing when
+  they agree.

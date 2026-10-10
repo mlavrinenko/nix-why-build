@@ -20,6 +20,9 @@ pub struct Drv {
     pub system: String,
     /// Whether it is a fixed-output derivation, a fetch.
     pub fixed_output: bool,
+    /// Whether `allowSubstitutes` is off, so nix builds it even when a cache
+    /// serves it.
+    pub local_only: bool,
     /// Output name to output path.
     pub outputs: BTreeMap<String, StorePath>,
     /// Input `.drv` to the outputs of it this derivation uses.
@@ -71,6 +74,7 @@ pub fn read(store_dir: &Path, path: &StorePath) -> Result<Drv, DrvError> {
         version: attr("version"),
         system: parsed.drv.system().to_owned(),
         fixed_output: parsed.fixed_output,
+        local_only: !substitutes_allowed(&env, structured.map(|json| json.get("allowSubstitutes"))),
         outputs: parsed.outputs,
         inputs: parsed
             .drv
@@ -80,6 +84,19 @@ pub fn read(store_dir: &Path, path: &StorePath) -> Result<Drv, DrvError> {
             .collect(),
         path: path.clone(),
     })
+}
+
+/// `allowSubstitutes` as nix reads it: structured attrs (`structured` is
+/// `Some`, holding the key's value if set) take a JSON `false` as off; a
+/// plain environment takes any value but `"1"` as off, so `""` is off too.
+fn substitutes_allowed(
+    env: &BTreeMap<String, String>,
+    structured: Option<Option<&serde_json::Value>>,
+) -> bool {
+    match structured {
+        Some(value) => value.and_then(serde_json::Value::as_bool) != Some(false),
+        None => env.get("allowSubstitutes").is_none_or(|value| value == "1"),
+    }
 }
 
 /// Everything a diff compares: the environment (structured attrs stay in

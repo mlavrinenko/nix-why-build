@@ -90,6 +90,16 @@ fn without_a_pname_or_a_lookup_it_says_unknown_and_why() {
 }
 
 #[test]
+fn a_local_only_root_is_local_only_before_anything_else() {
+    let store = FakeStore::new();
+    let root = drv(&store, &llama().env("allowSubstitutes", ""));
+    assert_eq!(
+        classify(store.dir(), &root, found(&[], &[]), &Facts::default()),
+        Reason::LocalOnly
+    );
+}
+
+#[test]
 fn no_candidate_at_all_is_no_counterpart_and_lists_what_was_tried() {
     let store = FakeStore::new();
     let root = drv(&store, &llama());
@@ -356,6 +366,11 @@ fn other_details_read_as_one_line_of_evidence() {
             },
             "no-counterpart",
             "no nixpkgs attribute matches its pname (tried a#k, b#k, a#K +1)",
+        ),
+        (
+            Reason::LocalOnly,
+            "local-only",
+            "allowSubstitutes = false: nix builds it even when a cache has it",
         ),
         (
             Reason::Unknown {

@@ -110,3 +110,24 @@ fn attrs_keep_structured_json_and_drop_output_paths() {
     );
     assert_eq!(attrs.inputs, BTreeSet::from([lib]));
 }
+
+#[test]
+fn flags_a_derivation_that_forbids_substitutes_as_nix_reads_it() {
+    let store = FakeStore::new();
+    let local = |spec: &crate::fixture_tests::DrvSpec| {
+        read(store.dir(), &store.add(spec))
+            .expect("readable drv")
+            .local_only
+    };
+    assert!(local(&spec("etc-bashrc").env("allowSubstitutes", "")));
+    assert!(local(&spec("zero").env("allowSubstitutes", "0")));
+    assert!(local(
+        &spec("units").env("__json", r#"{"allowSubstitutes":false}"#)
+    ));
+    assert!(!local(&spec("plain")));
+    assert!(!local(&spec("one").env("allowSubstitutes", "1")));
+    assert!(!local(
+        &spec("on").env("__json", r#"{"allowSubstitutes":true}"#)
+    ));
+    assert!(!local(&spec("absent").env("__json", r#"{"pname":"x"}"#)));
+}

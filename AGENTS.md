@@ -49,6 +49,9 @@
   is finished on the same tag with `gh workflow run <release workflow> -f
   tag=vX.Y.Z`; a pushed tag never moves.
 - Eating your own dog food: the tool should use itself if applicable.
+- After touching the walk (`src/walk.rs`, `src/drv.rs`), run `just oracle
+  <installable>` on a real configuration: it diffs `to_build` with nix's own
+  dry-run plan on an empty store and must print nothing.
 - Tasks live in `truth/tasks/` under MindTape: load the `mindtape` skill, use
   `mt` for every task change, and flip a task with the commit that carries its
   work (`Refs: <stem>` footer). See Tasks in CONTRIBUTING.md.
