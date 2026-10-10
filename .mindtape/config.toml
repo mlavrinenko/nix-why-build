@@ -170,6 +170,7 @@ required = "!terminal"
 [tasks.assignee]
 allowed = ["max", "agent"]
 required = "!terminal"
+example = "agent"
 
 [tasks.comments]
 policy = "forbid"
