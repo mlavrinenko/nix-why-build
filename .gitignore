@@ -3,3 +3,5 @@
 /var
 /.cargo/config.toml
 /.mindtape/cache/
+/mutants.out
+/mutants.out.old
