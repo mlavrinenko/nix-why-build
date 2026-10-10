@@ -293,6 +293,11 @@ deny:
 outdated:
     cargo outdated --workspace
 
+# Put this checkout's binary on PATH (~/.cargo/bin). The contract ~/.nix's
+# `just install nix-why-build` calls.
+install:
+    cargo install --path . --locked --quiet
+
 # Point git at the tracked pre-commit hook (`.githooks/pre-commit` asserts
 # `mmz --is-fresh --tag gate` against the worktree, running nothing of its
 # own). The dev shell runs this recipe from shellHook on entry, so a fresh
