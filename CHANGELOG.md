@@ -87,3 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   its first failure, each with one warning; its paths count as misses, as nix
   treats a cache it cannot reach, so roots stay roots and a dead cache costs
   one wait per run.
+
+### Changed
+
+- The embedded Nix expression follows `nixfmt` layout, which `just check` now
+  enforces; evaluation is unchanged.

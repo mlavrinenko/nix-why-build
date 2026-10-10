@@ -78,6 +78,15 @@ scopes:
     - ".mindtape/config.toml"
     - ".mindtape/templates/**"
 
+  # Every tracked Nix file: the flake and the expressions the binary embeds.
+  # `**/` also matches the repo root, so `flake.nix` is in.
+  nix:
+    - "**/*.nix"
+
+  # The GitHub Actions workflows actionlint reads.
+  workflows:
+    - ".github/workflows/**"
+
   # `just crap` reads the lcov `just cover` wrote. It is gitignored (it lives
   # under target/), which is exactly why it is spelled as a LITERAL path: mmz's
   # gitignore filter applies to glob matches only, and explicitly listed
@@ -131,6 +140,25 @@ commands:
     tags: [gate]
     inputs: [rust, gates-meta]
 
+  # `just coverage` is `cover` then `crap`: one record for the pair, so a failing
+  # CRAP run re-runs the (minutes-long) instrumented suite too, and a green pair
+  # is skipped whole. `just cover` and `just crap` below stay for direct runs.
+  - name: just coverage
+    tags: [gate]
+    inputs: [rust, gates-meta]
+
+  - name: just doc
+    tags: [gate]
+    inputs: [rust, gates-meta]
+
+  - name: just nix-fmt
+    tags: [gate]
+    inputs: [nix, gates-meta]
+
+  - name: just actionlint
+    tags: [gate]
+    inputs: [workflows, gates-meta]
+
   - name: just machete
     tags: [gate]
     inputs: [manifests, gates-meta]
@@ -157,9 +185,9 @@ commands:
     tags: [gate]
     inputs: [outdatty-config, rust, docs, gates-meta]
 
-  # Untagged from here down: these run outside `just check` (CI runs them in
-  # their own job), so they stay out of the gate set. Memoized only so a no-op
-  # re-run of the slow coverage pair is free.
+  # Untagged from here down: the halves of `just coverage`, for direct runs. They
+  # stay out of the gate set because `just coverage` already carries them, and are
+  # memoized only so a no-op re-run of the slow pair is free.
   - name: just cover
     inputs: [rust, gates-meta]
 

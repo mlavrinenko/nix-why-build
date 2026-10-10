@@ -148,13 +148,14 @@ Prerequisites: [Nix](https://nixos.org/) with flakes enabled.
 direnv allow         # or: nix develop
 just install-hooks   # pre-commit hook running the (memoized) gate
 
-just check           # fmt, clippy, tests, unused deps, file size, drift, copy-paste, tasks
+just check           # the memoized gate: fmt, clippy, tests, coverage, rustdoc, nixfmt, actionlint,
+                     # unused deps, file size, drift, copy-paste, tasks
 just deny            # cargo-deny: advisories, licenses, bans (needs network)
 just oracle .#nixosConfigurations.tank  # diff to_build with nix's own dry-run plan
 just build
 just test
-just cover           # code coverage via cargo-llvm-cov (70% minimum)
-just fmt             # format code
+just cover           # code coverage via cargo-llvm-cov (95% minimum)
+just fmt             # format Rust and Nix
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for coding conventions.

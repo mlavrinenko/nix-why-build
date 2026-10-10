@@ -53,7 +53,8 @@
             # asserts a prior pass without running anything.
             qahq.packages.${system}.mmz
             qahq.packages.${system}.outdatty
-          ] ++ (with pkgs; [
+          ]
+          ++ (with pkgs; [
             rustc
             cargo
             cargo-llvm-cov
@@ -72,6 +73,10 @@
             clippy
             rustfmt
             just
+            # `just nix-fmt` and `just actionlint` gate the `.nix` files and the
+            # workflows in `just check`; nixfmt is also the flake's `formatter`.
+            nixfmt
+            actionlint
             nixd
             rust-analyzer
           ]);

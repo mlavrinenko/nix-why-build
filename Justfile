@@ -24,13 +24,14 @@ default:
 # Run fixes, then other checks
 fix-check: eject clippy-fix fmt check
 
-# Run all checks in parallel (fmt + clippy + tests + unused deps + file size +
-# drift + copy-paste). Each arm is `just mmz <subgate>` — mmz wraps it, so a
-# no-op `just check` re-run skips every arm whose declared inputs are unchanged,
-# and `mmz --is-fresh --tag gate` asserts they all passed without running any.
-# Per-rule scopes and the `gate` tag live in .mmz/config.yaml.
+# Run all checks in parallel (fmt + clippy + tests + coverage + rustdoc + nixfmt
+# + actionlint + unused deps + file size + copy-paste + tasks + drift). Each
+# arm is `just mmz <subgate>` — mmz wraps it, so a no-op `just check` re-run
+# skips every arm whose declared inputs are unchanged, and `mmz --is-fresh --tag
+# gate` asserts they all passed without running any. Per-rule scopes and the
+# `gate` tag live in .mmz/config.yaml.
 [parallel]
-check: (mmz "fmt-check") (mmz "clippy") (mmz "test") (mmz "machete") (mmz "check-file-size") (mmz "check-dry") (mmz "check-tasks") (mmz "outdatty-check")
+check: (mmz "fmt-check") (mmz "clippy") (mmz "test") (mmz "coverage") (mmz "doc") (mmz "nix-fmt") (mmz "actionlint") (mmz "machete") (mmz "check-file-size") (mmz "check-dry") (mmz "check-tasks") (mmz "outdatty-check")
 
 # Wrap a just recipe in mmz: `just mmz fmt-check` runs `mmz just fmt-check`. The
 # double hop makes mmz the cache identity (rule name `just <recipe>` in
@@ -82,6 +83,11 @@ clippy:
 clippy-fix:
     cargo clippy --fix --workspace --all-targets --allow-dirty --allow-staged -- -D warnings
 
+# Build the rustdoc docs.rs renders, failing on any warning (a broken intra-doc
+# link, an unclosed code fence). `--no-deps` documents only this workspace.
+doc:
+    RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps -q
+
 # Build the project
 build *args:
     cargo build --workspace -q {{ args }}
@@ -116,13 +122,18 @@ cover_ignore := 'src/main\.rs|/registry/src/'
 # workspace headline of 87.58% where the tree was actually 93.45%. It fails
 # toward pessimism, so a gate with a floor never complains; what it does instead
 # is make every fresh worktree disagree with the main checkout.
+#
+# The per-file table is 29 lines to say "above the floor", so the last line
+# keeps it in a file and prints it only when the floor fails. Nothing prints on
+# a pass, which is what lets `just coverage` ride inside `just check`.
 cover:
     mkdir -p target/coverage
     cargo llvm-cov clean --workspace
     cargo llvm-cov nextest --workspace --no-report
     cargo llvm-cov report --ignore-filename-regex '{{ cover_ignore }}' \
         --lcov --output-path target/coverage/lcov.info
-    cargo llvm-cov report --ignore-filename-regex '{{ cover_ignore }}' --fail-under-lines 70
+    cargo llvm-cov report --ignore-filename-regex '{{ cover_ignore }}' --fail-under-lines 95 \
+        > target/coverage/summary.txt || { cat target/coverage/summary.txt; exit 1; }
 
 # Gate complex, undertested functions via CRAP metric. Needs lcov from `just
 # cover` first, and REFUSES a stale one rather than scoring it — see
@@ -192,13 +203,30 @@ _lcov-stale-reason:
         echo "$lcov predates $newer"
     fi
 
+# The coverage floor and the CRAP gate as one arm of `just check`, so one mmz
+# record covers both. `cover` runs first and writes the lcov that `crap` reads;
+# just runs a recipe's dependencies in order, so the pair is sequential. Keep
+# `just cover` and `just crap` for direct runs.
+coverage: cover crap
+
 # Format code
 fmt:
     cargo fmt --all
+    nixfmt $(git ls-files '*.nix')
 
 # Format check (CI-friendly)
 fmt-check:
     cargo fmt --all -- --check
+
+# Nix format check over every tracked `.nix` file (the two expressions the binary
+# embeds, and the flake). `just fmt` rewrites them.
+nix-fmt:
+    nixfmt --check $(git ls-files '*.nix')
+
+# Lint the GitHub Actions workflows: syntax, expressions, and the shell in each
+# `run:` step (actionlint runs shellcheck on it).
+actionlint:
+    actionlint .github/workflows/*.yml
 
 # Check for unused dependencies
 machete:

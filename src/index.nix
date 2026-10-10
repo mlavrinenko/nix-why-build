@@ -73,11 +73,23 @@ let
         };
       }) names
     );
-  units = [ "services" "sockets" "timers" "paths" "mounts" "automounts" "slices" "targets" ];
+  units = [
+    "services"
+    "sockets"
+    "timers"
+    "paths"
+    "mounts"
+    "automounts"
+    "slices"
+    "targets"
+  ];
   nixos = {
     prefix = "";
     glue = [ ];
-    lists = lists cfg.options [ "environment.systemPackages" "home.packages" ];
+    lists = lists cfg.options [
+      "environment.systemPackages"
+      "home.packages"
+    ];
     attrs = attrs cfg.options (
       map (kind: "systemd.${kind}") units ++ map (kind: "systemd.user.${kind}") units
     );

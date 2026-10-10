@@ -41,10 +41,12 @@ coverage, so anything there is untested by default.
 
 ## Code Coverage
 
-`just cover` enforces 70% line coverage with `cargo-llvm-cov`, which counts
-subprocess e2e tests too. It starts with `cargo llvm-cov clean --workspace` on
-purpose: without it a long-lived checkout scores binaries that no longer exist.
-`main.rs` is excluded, so keep it thin.
+`just cover` enforces 95% line coverage with `cargo-llvm-cov`, which counts
+subprocess e2e tests too. `just check` runs it with the CRAP gate below as
+`just coverage`, so the floor holds on every commit, not only in CI. It starts
+with `cargo llvm-cov clean --workspace` on purpose: without it a long-lived
+checkout scores binaries that no longer exist. `main.rs` is excluded, so keep
+it thin.
 
 ## CRAP Gate
 
@@ -55,9 +57,9 @@ CRAP catches that. Fix a flagged function by adding tests or reducing its
 branching. Tune the threshold per repo via `--threshold` or a `.cargo-crap.toml`.
 
 It refuses a stale `target/coverage/lcov.info`, since a function with no
-coverage record grades as 0%, so run `just cover` first. `tests/**` and ejected
-`*_tests.rs` are excluded so the gate never grades test helpers. `--min 30`
-keeps a green run quiet.
+coverage record grades as 0%, so run `just cover` first (`just coverage` runs
+both in order). `tests/**` and ejected `*_tests.rs` are excluded so the gate
+never grades test helpers. `--min 30` keeps a green run quiet.
 
 ## File Size Limits
 
@@ -96,8 +98,9 @@ worth knowing:
 - Rules tagged `gate` are the gate set: `mmz --is-fresh --tag gate` asserts every
   one already passed against this worktree and runs nothing. That is what the
   pre-commit hook checks (see Git Hooks below), and what to wire into a task
-  tracker's close gate. `just cover` and `just crap` are untagged — memoized,
-  but never blocking. A tag matching no rule asserts nothing and passes
+  tracker's close gate. `just coverage`, `doc`, `nix-fmt` and `actionlint` carry
+  the tag too; `just cover` and `just crap` are untagged — memoized, never
+  blocking. A tag matching no rule asserts nothing and passes
   vacuously, so any new gate arm must carry the `gate` tag to be covered.
 - There is no `--force`. To re-run a fresh rule, touch one of its inputs or
   delete its record under `.mmz/cache/` (gitignored via `.mmz/.gitignore`).
@@ -108,6 +111,13 @@ worth knowing:
   miss once more on the second run. "A no-op re-run is a full hit" holds from
   the third run onward. Nothing to fix — just do not read that first miss as a
   broken cache.
+
+## Rustdoc, Nix and Workflow Gates
+
+`just doc` builds rustdoc with `-D warnings`, so a broken intra-doc link fails
+before docs.rs renders it. `just nix-fmt` runs `nixfmt --check` over every
+tracked `.nix` file, and `just fmt` rewrites them. `just actionlint` lints
+`.github/workflows`, including the shell in each `run:` step.
 
 ## Copy-Paste Gate
 
@@ -171,6 +181,6 @@ says what the tool is for; every open task gives each goal a verdict.
 
 ## Submitting Changes
 
-1. Run `just check`: fmt, clippy, tests, file size, drift, copy-paste, tasks
-2. Run `just fmt` to format code
-3. Ensure `just cover` meets the 70% threshold
+1. Run `just check`: fmt, clippy, tests, coverage and CRAP, rustdoc, nixfmt,
+   actionlint, file size, drift, copy-paste, tasks
+2. Run `just fmt` to format Rust and Nix

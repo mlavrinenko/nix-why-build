@@ -38,34 +38,11 @@ jobs:
           purge-created: 0
           purge-primary-key: never
 
-      # Same dev shell as local development, so CI and `just check` match.
+      # Same dev shell as local development, so CI and `just check` match. The
+      # check holds the coverage floor and the CRAP gate too, so there is no
+      # separate coverage job.
       - name: Check
         run: nix develop --command just check
-
-  coverage:
-    name: Coverage
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6.0.3
-      - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
-      - uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7
-        with:
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('**/flake.lock', '**/*.nix') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-
-          gc-max-store-size-linux: 5G
-          purge: true
-          purge-prefixes: nix-${{ runner.os }}-
-          purge-created: 0
-          purge-primary-key: never
-
-      - name: Coverage (fails under 70%)
-        run: nix develop --command just cover
-
-      # CRAP metric: fails if a function is both complex and undertested,
-      # which a global coverage threshold can hide. Consumes the lcov that
-      # `just cover` wrote.
-      - name: CRAP gate (fails above 30)
-        run: nix develop --command just crap
 
   deny:
     name: Dependency Audit

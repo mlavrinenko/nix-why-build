@@ -47,8 +47,8 @@ impl Report {
     }
 
     /// Shown roots, grouped by the named packages they drag in. Local-only
-    /// roots that drag in nothing named form one group (see
-    /// [`Group::header`]); other roots that drag in nothing named stand
+    /// roots that drag in nothing named form one group, headed
+    /// `N local-only: ...`; other roots that drag in nothing named stand
     /// alone. The local-only group comes last, as nothing in it can become
     /// a cache hit; the rest go most named cascades first, then the largest
     /// group, then by name.

@@ -9,11 +9,15 @@
   lines (a variable read back later, a `trap`).
 - At the end ensure that `just fix-check` is green.
 - Tests: inline `#[cfg(test)]` units; CLI/integration in `tests/` (`assert_cmd` + `predicates`). `just fix-check` auto-ejects inline tests from oversized files via `ejectest`.
-- Coverage and CRAP gates run separately (CI + `just validate`): `just cover`
-  then `just crap`. `just cover` uses `cargo-llvm-cov` (not tarpaulin) — it
-  merges child-process profraw, so subprocess-based e2e tests attribute
-  correctly. If `just crap` flags a function, add tests or reduce its
-  branching — don't raise the threshold to dodge it.
+- `just check` holds the coverage floor (95% of lines) and the CRAP gate as one
+  arm, `just coverage`; `just cover` then `just crap` run them by hand.
+  `just cover` uses `cargo-llvm-cov` (not tarpaulin) — it merges child-process
+  profraw, so subprocess-based e2e tests attribute correctly. If `just crap`
+  flags a function, add tests or reduce its branching — don't raise the
+  threshold to dodge it.
+- `just check` also runs rustdoc with `-D warnings`, `nixfmt --check` over the
+  tracked `.nix` files and `actionlint` over the workflows; `just fmt` formats
+  Rust and Nix.
 - Every arm of `just check` is `just mmz <subgate>`:
   [mmz](https://github.com/mlavrinenko/mmz) skips arms whose declared inputs are
   unchanged since they last passed, so a new or retargeted gate needs its rule in
