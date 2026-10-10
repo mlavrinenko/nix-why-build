@@ -57,6 +57,9 @@
   run leaves main pushed and no tag. A release whose workflow failed
   is finished on the same tag with `gh workflow run <release workflow> -f
   tag=vX.Y.Z`; a pushed tag never moves.
+- Parallel agents each get a worktree from `just fork <name>`: a branch,
+  `../nix-why-build-<name>` and its dev shell allowed. Gates tolerate several
+  forks at once; merge each back and re-run `just check` on the result.
 - Eating your own dog food: the tool should use itself if applicable.
 - `just oracle <installable>` diffs `to_build` with nix's own dry-run plan on an
   empty store; it must print nothing, and it refuses an empty `to_build`. CI

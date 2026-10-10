@@ -383,9 +383,18 @@ install:
 # `git commit --no-verify`.
 install-hooks:
     git config core.hooksPath .githooks
-    rm -f .git/hooks/pre-commit
+    rm -f "$(git rev-parse --git-common-dir)/hooks/pre-commit"
     chmod +x .githooks/pre-commit
     echo "installed .githooks"
+
+# A sibling worktree on a new branch from HEAD, its dev shell allowed, for a
+# parallel agent or an experiment: `just fork api` makes ../nix-why-build-api
+# on `fork/api`. Each fork has its own target/ and mmz records, so gates run
+# side by side. Drop it with `git worktree remove ../nix-why-build-api`.
+fork NAME:
+    git worktree add -q -b 'fork/{{ NAME }}' '../nix-why-build-{{ NAME }}' HEAD
+    if command -v direnv >/dev/null; then direnv allow '../nix-why-build-{{ NAME }}'; fi
+    echo "../nix-why-build-{{ NAME }} on fork/{{ NAME }}"
 
 # The tag push is the only publish path: never `cargo publish` by hand, since a
 # version already on crates.io used to fail the tag's workflow and leave the
