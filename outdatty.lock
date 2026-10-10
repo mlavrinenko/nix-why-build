@@ -42,7 +42,7 @@ groups:
     source:
       .config/nextest.toml: 05097dd107b7bc32f65ffbfaffdc75fb95b8f00d155d266d7b21d042c6790857
       .mmz/config.yaml: 33007085872b39ae244fbe5201446cac5a3cf4969dd006a8c41564b2d4149844
-      Justfile: 50ac39999578ae2d728955bef08732ef69e1974a6616c96cd293f3da996d6061
+      Justfile: 5584be25ec2ba5589420fdf9db6dc8bd55bc93bac4dd0df0fd7065c8ce35d2ab
       flake.nix: 0f304c4d43a9a67fd6b57f1d69e2d939ecb03f7d76bdc1ae19a8bccffc7f203b
     dependents:
       AGENTS.md: c92c69572037aa1e1e9cf55fbc6d1cc66de8a2e0a233111a4e2e3af2751f8c1a

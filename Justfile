@@ -65,7 +65,8 @@ outdatty-update:
 # per test, so a panicking or hanging test is isolated — with `--status-level
 # fail`: a green run prints only the run header and the summary line, a red one
 # prints every failure's full output. nextest does not run doctests, so a second
-# pass covers them: a project with none pays a fast `running 0 tests` no-op.
+# pass covers them. Its output is held and printed only when it fails: a green
+# doctest pass costs six lines that say nothing nextest's summary has not.
 #
 # `[positional-arguments]` + `"$@"`: ARGS still reach both passes (a plain
 # substring filter works for both), but interpolating the variadic would
@@ -73,7 +74,7 @@ outdatty-update:
 [positional-arguments]
 test *ARGS:
     cargo nextest run --workspace --status-level fail "$@"
-    cargo test --workspace --doc "$@"
+    out=$(cargo test --workspace --doc "$@" 2>&1) || { printf '%s\n' "$out"; exit 1; }
 
 # Run clippy only
 clippy:
