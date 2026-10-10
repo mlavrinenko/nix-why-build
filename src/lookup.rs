@@ -14,6 +14,7 @@ use crate::modules::Labels;
 use crate::reason::{self, Facts, Reason};
 use crate::roots::Split;
 use crate::walk::Graph;
+use crate::{Options, Progress};
 
 /// What a root is looked up as: its `pname` and the package sets to try.
 type Key = (String, Vec<String>);
@@ -32,12 +33,13 @@ pub enum Inputs<'a> {
 /// Each root's reason, keyed by root `.drv` path, and any warning: a failed
 /// lookup leaves those roots unknown.
 pub async fn classify_roots(
-    store_dir: &Path,
+    options: &Options,
     graph: &Graph,
     split: &Split,
     flake: Inputs<'_>,
     substituters: &Substituters,
 ) -> (HashMap<String, Reason>, Vec<String>) {
+    let store_dir = options.store_dir.as_path();
     let mut warnings = Vec::new();
     let roots: Vec<&Drv> = split
         .roots
@@ -61,6 +63,12 @@ pub async fn classify_roots(
             variants: variants.clone(),
         })
         .collect();
+    announce(
+        options,
+        &roots,
+        system,
+        !inputs.is_empty() && !lookups.is_empty(),
+    );
     let found = find(system, &inputs, &lookups, flake, &mut warnings).await;
     let facts = match &found {
         Ok(found) => facts(store_dir, found, substituters).await,
@@ -93,6 +101,19 @@ pub async fn classify_roots(
         })
         .collect();
     (reasons, warnings)
+}
+
+/// Tells the progress callback how many roots are about to be compared with
+/// nixpkgs, when the comparison happens at all: roots a fetch, a local-only
+/// build or a missing `pname` rules out are not compared.
+fn announce(options: &Options, roots: &[&Drv], system: &str, comparing: bool) {
+    if comparing {
+        let compared = roots
+            .iter()
+            .filter(|root| key_of(root, system).is_ok())
+            .count();
+        options.notify(Progress::Comparing { roots: compared });
+    }
 }
 
 async fn find(

@@ -14,7 +14,7 @@ use chain::Chain;
 use fixture::PUBLIC;
 
 #[tokio::test]
-async fn explain_reports_each_phase_to_the_callback() {
+async fn explain_reports_each_phase_to_the_callback_and_skips_nixpkgs_without_a_flake() {
     let chain = Chain::new();
     let seen = Arc::new(Mutex::new(Vec::new()));
     let sink = Arc::clone(&seen);
@@ -39,7 +39,6 @@ async fn explain_reports_each_phase_to_the_callback() {
             walking(1, 1),
             walking(2, 2),
             walking(3, 3),
-            Progress::Comparing { roots: 1 },
         ]
     );
 }

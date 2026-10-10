@@ -109,7 +109,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On a terminal, one line on stderr says what the run is waiting on and
   rewrites itself per phase: `evaluating .#nixosConfigurations.tank`, then
   `asking 5 caches: level 7, 3210 derivations`, then `comparing 52 roots with
-  nixpkgs`, and it is gone before the report prints. A pipe or a file gets
+  nixpkgs` (only the roots it looks up, and only when there is a flake to
+  look in), and it is gone before the report prints. A pipe or a file gets
   not one extra byte. `RUST_LOG=info` logs each phase with its duration. As a
   library, `Options::with_progress` takes a callback that hears each
   `Progress` phase; the library prints nothing itself.

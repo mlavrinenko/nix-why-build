@@ -153,7 +153,7 @@ impl Options {
     }
 
     /// Tells the callback, if any, that `progress` has started.
-    fn notify(&self, progress: Progress) {
+    pub(crate) fn notify(&self, progress: Progress) {
         if let Some(callback) = &self.progress {
             callback.call(progress);
         }
@@ -197,12 +197,9 @@ pub async fn explain(options: &Options) -> Result<Report, Error> {
         }
         None => lookup::Inputs::NoFlake,
     };
-    options.notify(Progress::Comparing {
-        roots: split.roots.len(),
-    });
     let (reasons, warnings) = timed(
         "comparing roots with nixpkgs",
-        lookup::classify_roots(&options.store_dir, &graph, &split, flake, &substituters),
+        lookup::classify_roots(options, &graph, &split, flake, &substituters),
     )
     .await;
     // Only now: the walk and the root lookup both ask the substituters.

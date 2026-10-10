@@ -28,9 +28,11 @@ pub enum Progress {
         /// How many substituters are asked.
         caches: usize,
     },
-    /// The roots are being compared with their nixpkgs counterparts.
+    /// The roots are being compared with their nixpkgs counterparts. Not sent
+    /// when there is nothing to compare with, as for a `.drv` path.
     Comparing {
-        /// How many roots.
+        /// How many roots are compared: those with a `pname` that are neither
+        /// fetches nor local-only.
         roots: usize,
     },
 }

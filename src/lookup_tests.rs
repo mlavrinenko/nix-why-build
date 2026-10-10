@@ -129,6 +129,11 @@ async fn instantiate(dir: &std::path::Path, attr: &str) -> nix_derivation::Store
 /// Real nix, a fake nixpkgs input, the real store and a `file://` cache:
 /// the root is nixpkgs' own `app`, so its `hello` decides the category.
 async fn classify_app(hello_served: bool) -> super::Reason {
+    classified_app(hello_served).await.0
+}
+
+/// The same, with the progress the comparison reported.
+async fn classified_app(hello_served: bool) -> (super::Reason, Vec<crate::Progress>) {
     let nixpkgs = tempfile::tempdir().expect("tempdir");
     std::fs::write(nixpkgs.path().join("default.nix"), FAKE_NIXPKGS).expect("write");
     std::fs::create_dir_all(nixpkgs.path().join("pkgs/top-level")).expect("mkdir");
@@ -170,8 +175,13 @@ async fn classify_app(hello_served: bool) -> super::Reason {
     let labels =
         crate::modules::Labels::parse(&format!(r#"{{"path": "{}"}}"#, nixpkgs.path().display()))
             .expect("labels");
+    let heard = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let sink = std::sync::Arc::clone(&heard);
+    let options = crate::Options::new("self")
+        .with_store_dir(store)
+        .with_progress(move |progress| sink.lock().expect("lock").push(progress));
     let (reasons, warnings) = super::classify_roots(
-        store,
+        &options,
         &graph,
         &split,
         super::Inputs::Listed(&labels),
@@ -179,10 +189,12 @@ async fn classify_app(hello_served: bool) -> super::Reason {
     )
     .await;
     assert!(warnings.is_empty(), "{warnings:?}");
-    reasons
+    let reason = reasons
         .get(&app.to_absolute_path())
         .cloned()
-        .expect("the root is classified")
+        .expect("the root is classified");
+    let heard = heard.lock().expect("lock").clone();
+    (reason, heard)
 }
 
 #[tokio::test]
@@ -201,4 +213,10 @@ async fn an_unchanged_root_whose_hello_is_cached_is_unknown() {
         classify_app(true).await,
         super::Reason::Unknown { because } if because.starts_with("self#app builds exactly this")
     ));
+}
+
+#[tokio::test]
+async fn comparing_with_nixpkgs_says_how_many_roots_it_compares() {
+    let (_, heard) = classified_app(false).await;
+    assert_eq!(heard, [crate::Progress::Comparing { roots: 1 }]);
 }
