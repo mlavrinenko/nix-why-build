@@ -28,6 +28,9 @@ pub enum Progress {
         /// How many substituters are asked.
         caches: usize,
     },
+    /// The walk is done, and nix is still indexing the configuration's
+    /// options, which runs beside it and can take longer.
+    Indexing,
     /// The roots are being compared with their nixpkgs counterparts. Not sent
     /// when there is nothing to compare with, as for a `.drv` path.
     Comparing {
@@ -51,6 +54,7 @@ impl fmt::Display for Progress {
                 counted(*caches, "cache"),
                 counted(*derivations, "derivation"),
             ),
+            Self::Indexing => out.write_str("indexing the configuration's options"),
             Self::Comparing { roots } => {
                 write!(out, "comparing {} with nixpkgs", counted(*roots, "root"))
             }
@@ -108,6 +112,7 @@ mod tests {
                 derivations: 3210,
                 caches: 5,
             },
+            Progress::Indexing,
             Progress::Comparing { roots: 52 },
         ]
         .iter()
@@ -118,6 +123,7 @@ mod tests {
             [
                 "evaluating .#nixosConfigurations.tank",
                 "asking 5 caches: level 7, 3210 derivations",
+                "indexing the configuration's options",
                 "comparing 52 roots with nixpkgs",
             ]
         );

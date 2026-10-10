@@ -45,6 +45,7 @@ extern crate self as nix_why_build;
 mod fixture_tests;
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use progress::{Callback, timed};
 
@@ -256,6 +257,7 @@ struct Gathered {
 /// inputs. Only the walk reports progress: it is the one in the way.
 async fn gather(options: &Options, substituters: &cache::Substituters) -> Gathered {
     let config_attr = eval::config_attr(&options.installable);
+    let index_pending = AtomicBool::new(config_attr.is_some());
     let walked = async {
         options.notify(Progress::Evaluating {
             installable: options.installable.clone(),
@@ -270,13 +272,18 @@ async fn gather(options: &Options, substituters: &cache::Substituters) -> Gather
             });
         };
         let walk = walk::walk(&options.store_dir, &top, substituters, &on_level);
-        Ok::<_, Error>(timed("walking", walk).await)
+        let graph = timed("walking", walk).await;
+        // The option index runs beside the walk and may outlast it.
+        if index_pending.load(Ordering::Relaxed) {
+            options.notify(Progress::Indexing);
+        }
+        Ok::<_, Error>(graph)
     };
     let indexed = async {
-        match &config_attr {
-            Some(attr) => Some(timed("indexing options", modules::load(attr)).await),
-            None => None,
-        }
+        let attr = config_attr.as_ref()?;
+        let loaded = timed("indexing options", modules::load(attr)).await;
+        index_pending.store(false, Ordering::Relaxed);
+        Some(loaded)
     };
     let labelled = async {
         match eval::flake_ref(&options.installable) {
