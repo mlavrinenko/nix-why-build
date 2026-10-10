@@ -29,6 +29,7 @@
   assignee: "max",
   status: proposed(2026, 10, 10),
   links: depends-on("explain-why-each-root-misses-with-evidence.typ"),
+  start: on(2026, 12, 10),
 )
 
 == Problem
