@@ -223,7 +223,6 @@ values = [
   "!CONTRIBUTING.md",
   "!AGENTS.md",
   "!CHANGELOG.md",
-  "!www/**",
   "!outdatty.lock",
   "!truth/tasks/**",
   "!tests/**",

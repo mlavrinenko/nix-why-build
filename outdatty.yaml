@@ -12,7 +12,6 @@
 # belongs here — the `[untracked]` failure message does not say so.
 require_tracked:
   - "src/**"
-  - "www/**"
   - "README.md"
   - "CHANGELOG.md"
   - "CONTRIBUTING.md"
@@ -28,7 +27,6 @@ groups:
       - src/**
     dependents:
       - README.md
-      - www/index.html
 
   # A package change (version, dependencies, metadata) should land in the
   # changelog.

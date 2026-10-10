@@ -1,7 +1,7 @@
 name: CI
 
 # Runs on every push/PR. We deliberately do NOT use paths-ignore: a required
-# status check that never triggers (e.g. on a www-only PR) blocks merges
+# status check that never triggers (e.g. on a docs-only PR) blocks merges
 # forever. The job is cheap, so it runs unconditionally.
 on:
   push:

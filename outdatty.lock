@@ -42,11 +42,10 @@ groups:
       src/walk_tests.rs: 8dae925847f55922ff033ee2a34430097a4b22fdbb439512f675c1861c45bc41
     dependents:
       README.md: fbe0953258dfe4bfc5636347491c8124a55c3325f209946b6959224a8c4ba1d8
-      www/index.html: 35a390effd7c6f964b03b8834f0bf4a6d9aa86050292f1572ea7f45146e748b6
   dev-docs:
     source:
       .config/nextest.toml: 62ff4bbde114658aced2e28b106763419c767b6df9955573e012e7304bab3e23
-      .mmz/config.yaml: 33007085872b39ae244fbe5201446cac5a3cf4969dd006a8c41564b2d4149844
+      .mmz/config.yaml: ad15c52eed8c4a373516f2ee7bc11c1c6c9115306ca5a98304f1d16016a6dd61
       Justfile: a642d7aadc7dbc5130b273d6131cde1c4bcbc7506a75516279e9fbb35e138c9c
       flake.nix: c8c973239e173bfc3e5023230fdea91e93d1a565efc43ffba06ddd506cb21fad
     dependents:
