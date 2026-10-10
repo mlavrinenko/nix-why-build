@@ -68,6 +68,7 @@ scopes:
     - "CONTRIBUTING.md"
     - "AGENTS.md"
     - "CHANGELOG.md"
+    - "docs/*.md"
 
   # What decides a valid task: the config, templates and goals. The task
   # files under truth/tasks/ are left out on purpose: `mt flip` writes the

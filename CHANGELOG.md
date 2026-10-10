@@ -14,8 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cache serves it. It asks the caches, not your store, so a box that built
   everything yesterday gets the same answer as a fresh one.
 - It cuts the derivation graph where nix does on an empty store. `just oracle`
-  checks that against `nix build --dry-run`, and CI runs it on every push. On
-  tank both say 1673 derivations.
+  checks that against `nix build --dry-run`, and CI runs it on every push.
 - Derivations with `allowSubstitutes = false` count as built, since nix builds
   them whatever the cache holds.
 - Misses group by root. A root is built while everything it needs is served,
@@ -40,9 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A cache it can't speak to (`s3://`, `ssh-ng://`) is skipped, and one it
   can't reach is dropped after the first failure, each with one warning. Its
   paths count as misses, the way nix treats them.
-- It's quick. Caches are asked in parallel, a stalled request goes out again
-  after 1.5 s, and the option index evaluates while the caches answer. Tank
-  takes under 40 s, most of it nix's own evaluation.
+- Caches are asked in parallel, a stalled request goes out again after 1.5 s,
+  and the option index evaluates while the caches answer.
 - On a terminal a progress line on stderr shows the phase it's in, and the
   report gets colors. `--color` and `NO_COLOR` decide the colors, and a pipe
   gets plain text either way.

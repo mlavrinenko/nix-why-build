@@ -10,7 +10,7 @@ mod terminal;
 #[derive(Parser)]
 #[command(version, about)]
 struct Cli {
-    /// Flake installable (`.#nixosConfigurations.tank`) or a `.drv` path
+    /// Flake installable (`.#nixosConfigurations.mypc`) or a `.drv` path
     installable: String,
     /// Ask this substituter instead of nix's own list (repeatable)
     #[arg(long = "substituter", value_name = "URL")]

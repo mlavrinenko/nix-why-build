@@ -3,16 +3,21 @@
 //! [`explain`] evaluates an installable, walks its derivation graph and asks
 //! the substituters about each output, independent of the local store.
 //!
+//! The README's library example, compiled:
+//!
 //! ```no_run
+//! use nix_why_build::{Options, explain};
+//!
 //! # async fn run() -> Result<(), nix_why_build::Error> {
-//! let options = nix_why_build::Options::new(".#nixosConfigurations.tank");
-//! let report = nix_why_build::explain(&options).await?;
+//! let report = explain(&Options::new(".#nixosConfigurations.mypc")).await?;
 //! for root in &report.roots {
-//!     println!("{}: {} {}", root.name, root.reason.category(), root.reason.detail());
+//!     println!("{} {}", root.name, root.reason);
 //! }
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! [`Report::human`] is the text the CLI prints.
 //!
 //! Only the items re-exported below are public; the modules behind them are
 //! not:
@@ -56,22 +61,17 @@ pub use progress::Progress;
 pub use reason::Reason;
 pub use report::{Cascade, Package, Report, Requested, Root, Unknown};
 
-/// Compiles the README's library example, so it cannot rot.
-#[cfg(doctest)]
-#[doc = include_str!("../README.md")]
-struct ReadmeDoctests;
-
 /// What to explain, and against which caches.
 ///
 /// Build it with [`Options::new`] and the `with_*` methods; the struct is
 /// `#[non_exhaustive]`, so a field added later breaks no caller.
 ///
 /// ```
-/// let options = nix_why_build::Options::new(".#nixosConfigurations.tank")
+/// let options = nix_why_build::Options::new(".#nixosConfigurations.mypc")
 ///     .with_substituters(vec!["https://cache.nixos.org".to_owned()])
 ///     .with_trusted_keys(vec!["cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=".to_owned()])
 ///     .with_store_dir("/nix/store");
-/// assert_eq!(options.installable, ".#nixosConfigurations.tank");
+/// assert_eq!(options.installable, ".#nixosConfigurations.mypc");
 /// assert_eq!(
 ///     options.substituters,
 ///     Some(vec!["https://cache.nixos.org".to_owned()])
@@ -92,7 +92,7 @@ struct ReadmeDoctests;
 #[derive(Clone, Debug)]
 #[non_exhaustive]
 pub struct Options {
-    /// A flake installable (`.#nixosConfigurations.tank`) or a `.drv` path.
+    /// A flake installable (`.#nixosConfigurations.mypc`) or a `.drv` path.
     pub installable: String,
     /// Substituter URLs; `None` asks `nix config show`.
     pub substituters: Option<Vec<String>>,
@@ -144,7 +144,7 @@ impl Options {
     /// short.
     ///
     /// ```
-    /// let options = nix_why_build::Options::new(".#nixosConfigurations.tank")
+    /// let options = nix_why_build::Options::new(".#nixosConfigurations.mypc")
     ///     .with_progress(|progress| eprintln!("{progress}"));
     /// ```
     #[must_use]

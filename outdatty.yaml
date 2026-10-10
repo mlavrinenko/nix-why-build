@@ -13,6 +13,7 @@
 require_tracked:
   - "src/**"
   - "README.md"
+  - "docs/*.md"
   - "CHANGELOG.md"
   - "CONTRIBUTING.md"
   - "AGENTS.md"
@@ -28,6 +29,7 @@ groups:
       - src/**
     dependents:
       - README.md
+      - docs/architecture.md
 
   # A package change (version, dependencies, metadata) should land in the
   # changelog.
