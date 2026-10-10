@@ -231,11 +231,14 @@ eject PCT='90':
     #!/usr/bin/env bash
     set -eo pipefail
 
-    # Mask linecop's finding-exit. `--baseline` is advisory by design — the
-    # hard over-limit gate is `just check-file-size`, which runs bare linecop —
-    # so exit 1 here means "found files to act on", and must not abort the
-    # pipeline before ejectest sees them.
-    paths="$(linecop --baseline {{ PCT }} --format paths || true)"
+    # Mask linecop's finding-exit, and only that. `--baseline` is advisory by
+    # design — the hard over-limit gate is `just check-file-size`, which runs
+    # bare linecop — so exit 1 here means "found files to act on", and must not
+    # abort the pipeline before ejectest sees them. Since linecop 0.5, exit 2
+    # means a broken run (bad config, missing path), which must still fail.
+    rc=0
+    paths="$(linecop --baseline {{ PCT }} --format paths)" || rc=$?
+    [ "$rc" -le 1 ] || exit "$rc"
 
     # Rust only: paths outside `src` and non-`.rs` files are dropped by
     # ejectest's own --lenient root check anyway, but a Markdown path must not
