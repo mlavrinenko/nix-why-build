@@ -333,6 +333,10 @@ outdated:
 # a `-c` line of its own, the shape that gets the dev shell even when just runs
 # from another project; a relative flake ref (`.#nixosConfigurations.tank`)
 # resolves against where you ran just.
+#
+# An empty `to_build` is refused: two empty lists always agree, so an installable
+# that the caches fully serve would pass without testing the walk. CI runs this on
+# `.#default`, our own package, which no cache serves.
 oracle INSTALLABLE: (build "--release")
     #!/usr/bin/env bash
     set -euo pipefail
@@ -347,6 +351,11 @@ oracle INSTALLABLE: (build "--release")
     target/release/nix-why-build --json "$installable" > "$work/report.json"
     top=$(jq -r .toplevel "$work/report.json")
     jq -r '.to_build[].drv' "$work/report.json" | sort > "$work/ours"
+    if [ ! -s "$work/ours" ]; then
+        echo "oracle: to_build is empty for $installable, so there is nothing to compare" >&2
+        echo "hint: pick an installable that builds something, such as .#default" >&2
+        exit 1
+    fi
     nix copy --quiet --no-check-sigs --to "local?root=$store" "$top"
     nix build --quiet --dry-run --store "local?root=$store" "$top^*" 2> "$work/plan"
     awk '/will be built:$/ { on = 1; next } /^[^ ]/ { on = 0 } on { print $1 }' "$work/plan" \
