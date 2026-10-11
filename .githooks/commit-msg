@@ -3,4 +3,4 @@
 # written: a `Refs: <stem>` footer naming a started task, a flip riding with
 # its work, a CHANGELOG entry with a product change.
 set -eo pipefail
-exec mt check --commit-msg "$1"
+exec mt check -q --commit-msg "$1"
