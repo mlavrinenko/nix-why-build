@@ -238,7 +238,7 @@ jobs:
 
       # Updates the release in place when it exists, so a re-run is safe.
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3.0.0
+        uses: softprops/action-gh-release@v3.0.3
         with:
           tag_name: ${{ needs.meta.outputs.tag }}
           make_latest: ${{ needs.meta.outputs.latest }}
