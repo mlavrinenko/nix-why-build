@@ -10,7 +10,8 @@ patch, bump the package and so on).
 
 Ready to install? Run `cargo install nix-why-build` or take the overlay from
 `inputs.nix-why-build.overlays.default`, then use `pkgs.nix-why-build` in
-`environment.systemPackages`.
+`environment.systemPackages`. No cargo or flakes? Grab a binary from the
+[releases page](https://github.com/mlavrinenko/nix-why-build/releases/latest).
 
 ## Output example
 
