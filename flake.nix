@@ -91,6 +91,9 @@
             clippy
             rustfmt
             just
+            # `wt` forks and lands worktrees: `just fork` and `just land` run
+            # it, and .config/wt.toml holds the hooks it fires.
+            worktrunk
             # `just nix-fmt` and `just actionlint` gate the `.nix` files and the
             # workflows in `just check`; nixfmt is also the flake's `formatter`.
             nixfmt

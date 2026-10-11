@@ -3535,11 +3535,11 @@
         "tola": "tola"
       },
       "locked": {
-        "lastModified": 1787430638,
-        "narHash": "sha256-dCPQlNu5HsRkbC8iY8IbYZgqRqdpLKjNlPNMCdv/KyI=",
+        "lastModified": 1791716023,
+        "narHash": "sha256-aYo0eXazbLCOAB1RBuUnIuzkyjywmvYA/SnwdF3DYu8=",
         "owner": "mlavrinenko",
         "repo": "mmz",
-        "rev": "1b4593cf21b84a57b3a06e01f47684b6ef1d320f",
+        "rev": "80625202e9adb757f7f9708911348a43eaddef0c",
         "type": "github"
       },
       "original": {
@@ -5279,11 +5279,11 @@
         "outdatty": "outdatty_5"
       },
       "locked": {
-        "lastModified": 1791397620,
-        "narHash": "sha256-06Q11xDQaXXqxo3ABaIuACnhe/BNVLLyq1zLqobf6GA=",
+        "lastModified": 1791718858,
+        "narHash": "sha256-e+Rgu2LDblO9nzz16OGCQ61eabTxKG+XGFeHg2fKQSQ=",
         "owner": "mlavrinenko",
         "repo": "qahq",
-        "rev": "ae800a0d0945f275b1cbd5e3c5e6fd46ace085fb",
+        "rev": "db3ad7eeba1634477f88eb2c78a330f8430a6b64",
         "type": "github"
       },
       "original": {
