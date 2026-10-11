@@ -31,9 +31,17 @@ workflow=$(basename "${workflows[0]}")
     || refuse "the working tree has uncommitted changes" "commit or discard them, then re-run"
 branch=$(git symbolic-ref --short -q HEAD || true)
 [ "$branch" = main ] || refuse "HEAD is on '${branch:-a detached commit}', not main" "git switch main"
-git fetch --quiet origin main || refuse "can't fetch 'origin main'" "check the network and the origin remote"
-git merge-base --is-ancestor origin/main HEAD \
-    || refuse "origin/main has commits that main lacks" "git pull --ff-only origin main, then re-run"
+# An empty repository has no main yet, so the first release pushes all of it.
+first_push=false
+git ls-remote --exit-code --heads origin main >/dev/null || case $? in
+    2) first_push=true ;;
+    *) refuse "can't list 'origin main'" "check the network and the origin remote" ;;
+esac
+if ! $first_push; then
+    git fetch --quiet origin main || refuse "can't fetch 'origin main'" "check the network and the origin remote"
+    git merge-base --is-ancestor origin/main HEAD \
+        || refuse "origin/main has commits that main lacks" "git pull --ff-only origin main, then re-run"
+fi
 if git rev-parse -q --verify "refs/tags/$tag" >/dev/null \
     || git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
     refuse "'$tag' already exists" "a pushed tag never moves; finish a failed release with: gh workflow run $workflow -f tag=$tag"
@@ -51,8 +59,10 @@ mmz --is-fresh --tag gate || refuse "the gates have not passed on this tree" "ru
 cargo publish --dry-run --locked --quiet || refuse "cargo publish --dry-run failed" "fix the packaging error above"
 head=$(git rev-parse HEAD)
 short=$(git rev-parse --short HEAD)
-ahead=$(git rev-list --count origin/main..HEAD)
-if [ "$ahead" -gt 0 ]; then
+if $first_push; then
+    ahead=$(git rev-list --count HEAD)
+    plan="push all $ahead commit(s) as the first origin main ('$short')"
+elif ahead=$(git rev-list --count origin/main..HEAD); [ "$ahead" -gt 0 ]; then
     plan="push $ahead commit(s) to origin main ('$(git rev-parse --short origin/main)'..'$short')"
 else
     plan="push nothing (origin main is already '$short')"

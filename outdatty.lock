@@ -58,7 +58,7 @@ groups:
       scripts/eject.sh: 9fed177e7d200c062466f4c317c452280af8072de914f1eeb9ceb2a33cc97621
       scripts/oracle.sh: 227aec12391f2b7bb2735a36b6ff1c2b6a2e1da400e12db00f630571430e1539
       scripts/quiet.sh: 7e05bb0d5be2959ede47c7eb33b9203e0446702ea178cdb596951df9e8b3fb73
-      scripts/release.sh: 9ca4b58bdfb13c8c83c493442d5523c48baa22a51ef4a58b84e6717e64fab31b
+      scripts/release.sh: cb34140a2473fd442be3df5488cd35622a07a38744a9fc28836b73709dd8047c
       scripts/wt-carry-lcov.sh: 39b537a8a380b6fd1c88064bcfb2149a2207ba0ff390bf29c4bfa6e4b26fc650
     dependents:
       AGENTS.md: 244ce951ae413fb60cf4e8c1a78b8ce4bfff35c11260fa43de330bdcfd5a1f06
