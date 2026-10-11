@@ -132,6 +132,10 @@
           cargoLock.lockFile = ./Cargo.lock;
           # `just check` gates the suite, so the package build skips it.
           doCheck = false;
+          # nixpkgs' cargo hook turns Cargo.toml's `strip = true` off and leaves
+          # stripping to stdenv, which drops only debug info; strip the
+          # binary's symbols too.
+          stripAllList = [ "bin" ];
           meta = {
             inherit (crate) description;
             homepage = crate.repository;

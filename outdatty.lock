@@ -52,7 +52,7 @@ groups:
       .config/wt.toml: ea9dc47a3927f3796d2fb0f8b375cfaccb4028d20173a857fa4064fc4ff57690
       .mmz/config.yaml: d1364468d61bd48b9ddf8d1f3fffd70e400873f00656c6db11c5cdab4b2adc4f
       Justfile: d197844b1228b57f69100aa102a492960a1cfb9198ee8b44a557590dece2b010
-      flake.nix: 9fcf9911821f284d35d8c429bd380486ddc9c62b7e4f860d591c67e231a0660b
+      flake.nix: b6fc6d288a75d13031b7628f48452231d5f3c073f70bb04f94474d58b19d3015
       renovate.json: 81c18782a2bf7dc6706a50f45101a3cef1ca2fdc1abf2a2cb6c9537196fbad7b
       scripts/cover.sh: fc2943107746718e75b3d07092915cb60db0885b0f726fdc3b566ab4aeb292af
       scripts/crap.sh: f384281b2c68bc28fdde060f5f6d2e17cb56c1bb3ed569f560c8dbad96234368
@@ -74,4 +74,4 @@ groups:
     source:
       Cargo.toml: ce58ddd1b8a9ab5da01a092d02a16db1357404712631fc3e7e5767ba22c0d093
     dependents:
-      CHANGELOG.md: ad25f93d4b6eb147c85abe7d99aa7277f92217ba38786e854ef788c25b7e3352
+      CHANGELOG.md: daee4123b44d6831df7dddcaf723779a599327e3ce799c13495da233abee2083
