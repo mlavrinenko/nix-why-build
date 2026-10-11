@@ -21,7 +21,7 @@
     in
     {
       # A NixOS system with one home-manager user.
-      nixosConfigurations.tank = {
+      nixosConfigurations.mypc = {
         options = {
           environment = {
             systemPackages = option [

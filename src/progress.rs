@@ -105,7 +105,7 @@ mod tests {
     fn each_phase_reads_as_one_line() {
         let lines: Vec<String> = [
             Progress::Evaluating {
-                installable: ".#nixosConfigurations.tank".to_owned(),
+                installable: ".#nixosConfigurations.mypc".to_owned(),
             },
             Progress::Walking {
                 level: 7,
@@ -121,7 +121,7 @@ mod tests {
         assert_eq!(
             lines,
             [
-                "evaluating .#nixosConfigurations.tank",
+                "evaluating .#nixosConfigurations.mypc",
                 "asking 5 caches: level 7, 3210 derivations",
                 "indexing the configuration's options",
                 "comparing 52 roots with nixpkgs",

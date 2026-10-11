@@ -32,7 +32,7 @@ async fn a_package_in_system_path_is_wanted_by_system_packages() {
     let store = FakeStore::new();
     let llama = store.add(&spec("llama-cpp-0.5.0").env("pname", "llama-cpp"));
     let path = store.add(&spec("system-path").input(&llama, &["out"]));
-    let top = store.add(&spec("nixos-system-tank").input(&path, &["out"]));
+    let top = store.add(&spec("nixos-system-mypc").input(&path, &["out"]));
     let graph = graph_of(&store, &top).await;
     assert_eq!(
         asked(&graph, &llama),
@@ -53,7 +53,7 @@ async fn every_glue_node_above_a_root_asks_for_it() {
     let units = store.add(&spec("system-units").input(&unit, &["out"]));
     let etc = store.add(&spec("etc").input(&units, &["out"]));
     let top = store.add(
-        &spec("nixos-system-tank")
+        &spec("nixos-system-mypc")
             .input(&path, &["out"])
             .input(&etc, &["out"]),
     );
@@ -82,7 +82,7 @@ async fn the_item_is_what_the_glue_node_lists_not_the_root() {
     let vendor = store.add(&spec("cargo-vendor-dir").input(&krate, &["out"]));
     let kache = store.add(&spec("kache-1.0.0").input(&vendor, &["out"]));
     let path = store.add(&spec("system-path").input(&kache, &["out"]));
-    let top = store.add(&spec("nixos-system-tank").input(&path, &["out"]));
+    let top = store.add(&spec("nixos-system-mypc").input(&path, &["out"]));
     let graph = graph_of(&store, &top).await;
     assert_eq!(
         asked(&graph, &krate),
@@ -108,7 +108,7 @@ async fn units_map_by_kind_and_user_units_by_their_parent() {
     );
     let user_units = store.add(&spec("user-units").input(&user, &["out"]));
     let top = store.add(
-        &spec("nixos-system-tank")
+        &spec("nixos-system-mypc")
             .input(&system_units, &["out"])
             .input(&user_units, &["out"]),
     );
@@ -137,7 +137,7 @@ async fn home_manager_and_etc_glue_have_their_options() {
     let etc = store.add(&spec("etc").input(&firefox, &["out"]));
     let users = store.add(&spec("user-environment").input(&firefox, &["out"]));
     let top = store.add(
-        &spec("nixos-system-tank")
+        &spec("nixos-system-mypc")
             .input(&hm_path, &["out"])
             .input(&hm_files, &["out"])
             .input(&etc, &["out"])
@@ -163,13 +163,13 @@ async fn home_manager_and_etc_glue_have_their_options() {
 async fn a_way_up_with_no_glue_says_toplevel() {
     let store = FakeStore::new();
     let locales = store.add(&spec("glibc-locales-2.42"));
-    let top = store.add(&spec("nixos-system-tank").input(&locales, &["out"]));
+    let top = store.add(&spec("nixos-system-mypc").input(&locales, &["out"]));
     let graph = graph_of(&store, &top).await;
     assert_eq!(
         asked(&graph, &locales),
         [triple(
             "toplevel",
-            "nixos-system-tank",
+            "nixos-system-mypc",
             "glibc-locales-2.42"
         )]
     );

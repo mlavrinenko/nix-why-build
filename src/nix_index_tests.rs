@@ -38,7 +38,7 @@ fn source_drv(scope: &Scope, option: &str, entry: &str, name: &str) -> String {
 
 #[tokio::test]
 async fn the_nixos_scope_indexes_packages_units_and_sources() {
-    let index = index_of("tank").await;
+    let index = index_of("mypc").await;
     let [nixos, _alice] = index.scopes.as_slice() else {
         panic!("the system, then its one home-manager user: {index:?}");
     };
@@ -99,7 +99,7 @@ async fn the_nixos_scope_indexes_packages_units_and_sources() {
 
 #[tokio::test]
 async fn a_home_manager_user_gets_a_scope_with_its_own_glue() {
-    let index = index_of("tank").await;
+    let index = index_of("mypc").await;
     let [_nixos, alice] = index.scopes.as_slice() else {
         panic!("the system, then its one home-manager user: {index:?}");
     };
@@ -183,7 +183,7 @@ fn located(option: &str, files: &[&str]) -> Located {
 
 #[tokio::test]
 async fn the_index_resolves_requests_to_options_and_module_files() {
-    let index = index_of("tank").await;
+    let index = index_of("mypc").await;
     let [nixos, alice] = index.scopes.as_slice() else {
         panic!("the system, then its one home-manager user: {index:?}");
     };

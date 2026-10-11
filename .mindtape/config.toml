@@ -239,11 +239,10 @@ values = [
 ]
 
 [[commits.rules]]
-# mt 0.3.0 reads no `trailers`; restore the `Changelog: none` escape once it does.
 name = "changelog-with-product-change"
-when = 'count(files, "@product") >= 1'
+when = 'count(files, "@product") >= 1 && !matches(trailers, "(?i)^Changelog: none$")'
 assert = 'matches(files, "^CHANGELOG[.]md$")'
-message = "add an entry under [Unreleased] in CHANGELOG.md"
+message = "add an entry under [Unreleased] in CHANGELOG.md, or a `Changelog: none` trailer when there is nothing to announce"
 severity = "error"
 
 [[commits.rules]]

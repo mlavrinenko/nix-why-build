@@ -13,7 +13,7 @@ groups:
       src/diff_tests.rs: a5f3150b94abe644590e1700dc39e6530434dfa0d42dc36b2579b6b70023f503
       src/drv.rs: e9333543a2648f43cbc4750ea99829d701c63cc23a6e0175cd1e88ded94d9d35
       src/drv_tests.rs: 42bb426a32f105c418093c5bce1ee127adada04cad920dbecad6afd626a7298b
-      src/eval.rs: 5a7ac35bbea1feea486f56daddc8613ef3f36e9e7132a223a0093916e0f82eb7
+      src/eval.rs: 72289ad1eb9376504a56c16257172633c9b88d92e519cd6253ef60b905513a06
       src/human.rs: b958b8d6ab1578bbbb5d6a06fec1db65186777ff3eee2ed51d459493eb8b3aa6
       src/human_tests.rs: b2b9c2c40d576e2ce2f0b72e37adffae8dcf974739850b6d24435a9dac47c74c
       src/index.nix: 94d446dcb4715fdcbe262f04af5c3e5d8142d3945ce56b8ece93fcd069a762c8
@@ -21,23 +21,23 @@ groups:
       src/lookup.rs: da7b9bcc91b3cffda9b03baea901392d197c9de6c4b77a37f476e98e37a8a156
       src/lookup_tests.rs: a2012237057fadcfb4ebc72ae8b0c5f6d31db9022e0c03bfbd7c5925c6a405db
       src/main.rs: aad810a17567635035b13e5522595f9f5f1f6df11b0b11cefcb381b5b33d4a8c
-      src/modules.rs: 997b732a6f8045833d63c1ee49a74956fde63285b28c7fb8961a2b723e74f430
-      src/modules_tests.rs: 74049811fac1584c662aacbf133301e7e27b257525dd2a9db42d99b405249bad
+      src/modules.rs: f042efd7951e14c55a27142b8b95f008e37cfe8b999de055fd54e8594956df61
+      src/modules_tests.rs: 4b21ec6e0fe6680ff80dc9c523bafde68612bf56b46f17b6e714ed17945d58c2
       src/nix_counterparts_tests.rs: c596f587b2c2d86fc45bd76cc8a664c98930777b94e09c6921400d18a57c69f6
-      src/nix_index_tests.rs: 556de95404f9a994ae60249db4d2a509837238c47c835c4b54fae85c5a54eae5
+      src/nix_index_tests.rs: 65dd85ef8c269d6be677d7b4e225ba0e0ef868ce486a8e718853bd74abed15da
       src/nix_tests.rs: 0f1121334572e0dab2d997bbadf3d1a3b005ff74bdccd611db1994de6973d4dd
-      src/progress.rs: 15251bf0c3d0583e135f27acac9e267d17997c909d8350de58d4c7768c4893d4
+      src/progress.rs: 8d2085267985ff8dc5fc43750989c45474d5616f329f8a0922a9d159a2a72b45
       src/reason.rs: 6b47f6c5324da306a92b5df93f7ee9202911ff1b1656c7052b5fb1a0d5f4fce5
       src/reason_tests.rs: d6454479b074289faef0f24611b288eef9734ea47d4c077ed51cc5bcb5c57d53
       src/report.rs: 9393e7a28fe9ef1be88bc92529808db9d09ce30734c8ae2b793b810d81e76594
-      src/report_tests.rs: 7a95b98dcb439c8ea587fae5a7cc85a22b94f14bf94789713fceb08cdb7ca4c3
+      src/report_tests.rs: cec3c287b3592e0dbf08e48bff933871e77772c06122fce2fc5ece82493806b8
       src/requester.rs: 97d0879ff73eab709ecfc3312c9ef564aa146294d32758bed29184a22b90da04
-      src/requester_tests.rs: 846979aa0f1e44aae74e1b99377708a44a2e07e96c733ac3e74680223f132e83
+      src/requester_tests.rs: 24e70996f574abcb71fd63b572ab75729423a4283894c41a23e88acc67cd8502
       src/roots.rs: 68c87cf96f4d206f1f8ba2e7437c095ee5284ddb5ab68f26afa6da503a535619
       src/roots_tests.rs: a69e2d14624303019dccb1946d8c2ba4a776c8c22e50cee0e501a50bacca0de9
       src/style.rs: 502ef0534ccb2c886ad7cae2a74537d3be83e2f193538d6471ac88573ba686c3
       src/style_tests.rs: 0315e89f51baed302d3946787d1c33336c2c18263df643fe2a79c1020ae12200
-      src/terminal.rs: 22b1825628790cf471d9eab8f79b375e8d5fbf7e84a871e25f4b580e070eecaa
+      src/terminal.rs: e1b359e4896e7af838056776e40226856bba34ec486f3df3735cbcce6d1178d3
       src/walk.rs: 0750933afbec635cbd24d99df0abf3c2694c400384be2aca220bb15cdad521ce
       src/walk_tests.rs: 8dae925847f55922ff033ee2a34430097a4b22fdbb439512f675c1861c45bc41
     dependents:

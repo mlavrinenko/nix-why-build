@@ -72,7 +72,7 @@ mod tests {
 
     #[test]
     fn a_frame_rewinds_draws_and_erases_the_rest() {
-        assert_eq!(frame("evaluating .#tank"), "\revaluating .#tank\x1b[K");
+        assert_eq!(frame("evaluating .#mypc"), "\revaluating .#mypc\x1b[K");
     }
 
     #[test]

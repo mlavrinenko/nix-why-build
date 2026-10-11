@@ -44,7 +44,7 @@
   kind: "raw",
   prompt: "Numbered steps anyone can follow, commands in backticks; open the step that shows the defect with 🔴 and quote what it printed",
   example: ```typ
-  + Run `nix-why-build .#nixosConfigurations.tank` while one substituter answers 503.
+  + Run `nix-why-build .#nixosConfigurations.mypc` while one substituter answers 503.
   + 🔴 Every path that substituter serves prints as a root miss.
   ```,
 )
@@ -101,6 +101,6 @@
   kind: "raw",
   prompt: "How this repo will use the change, or Not applicable and why",
   example: ```typ
-  The tank dogfood run stays readable while a cachix cache hiccups.
+  The dogfood run stays readable while a cachix cache hiccups.
   ```,
 )

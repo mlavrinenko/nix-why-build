@@ -68,7 +68,7 @@ pub struct Sources {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Located {
     /// The full option, like `systemd.services.nix-daemon` or
-    /// `home-manager.users.tank.xdg.configFile."fonts/fonts.conf"`.
+    /// `home-manager.users.me.xdg.configFile."fonts/fonts.conf"`.
     pub option: String,
     /// The module files that set it, as the index has them.
     pub files: Vec<String>,

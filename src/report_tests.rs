@@ -305,12 +305,12 @@ fn package_lists_come_first_then_units_then_files() {
         &[
             "environment.etc.profile",
             "systemd.user.services.kache",
-            "home-manager.users.tank.home.packages",
+            "home-manager.users.me.home.packages",
         ],
     );
     assert_eq!(
         report(vec![root], vec![], vec![]).human(),
-        "kache-1.0.0\n  why unknown: test\n  wanted by home-manager.users.tank.home.packages, systemd.user.services.kache (+1 more)\n"
+        "kache-1.0.0\n  why unknown: test\n  wanted by home-manager.users.me.home.packages, systemd.user.services.kache (+1 more)\n"
     );
 }
 

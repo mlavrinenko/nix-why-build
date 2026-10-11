@@ -50,7 +50,7 @@ pub fn toplevel_attr(installable: &str) -> String {
 }
 
 /// The configuration an installable names, when it names one
-/// (`.#nixosConfigurations.tank`): its options can be indexed.
+/// (`.#nixosConfigurations.mypc`): its options can be indexed.
 #[must_use]
 pub fn config_attr(installable: &str) -> Option<String> {
     let (_, attr) = installable.split_once('#')?;
@@ -209,8 +209,8 @@ mod tests {
     fn maps_configuration_installables_to_what_they_build() {
         let cases = [
             (
-                ".#nixosConfigurations.tank",
-                ".#nixosConfigurations.tank.config.system.build.toplevel",
+                ".#nixosConfigurations.mypc",
+                ".#nixosConfigurations.mypc.config.system.build.toplevel",
             ),
             (
                 "github:o/r#homeConfigurations.me",
@@ -221,8 +221,8 @@ mod tests {
                 ".#darwinConfigurations.mac.system",
             ),
             (
-                ".#nixosConfigurations.tank.config.system.build.vm",
-                ".#nixosConfigurations.tank.config.system.build.vm",
+                ".#nixosConfigurations.mypc.config.system.build.vm",
+                ".#nixosConfigurations.mypc.config.system.build.vm",
             ),
             (
                 r#".#nixosConfigurations."host.lan""#,
@@ -240,8 +240,8 @@ mod tests {
     #[test]
     fn configurations_have_options_and_flakes_have_refs() {
         assert_eq!(
-            super::config_attr(".#nixosConfigurations.tank").as_deref(),
-            Some(".#nixosConfigurations.tank")
+            super::config_attr(".#nixosConfigurations.mypc").as_deref(),
+            Some(".#nixosConfigurations.mypc")
         );
         assert_eq!(
             super::config_attr("github:o/r#homeConfigurations.me").as_deref(),
@@ -252,7 +252,7 @@ mod tests {
             Some(".#darwinConfigurations.mac")
         );
         assert_eq!(
-            super::config_attr(".#nixosConfigurations.tank.config.system.build.vm"),
+            super::config_attr(".#nixosConfigurations.mypc.config.system.build.vm"),
             None
         );
         assert_eq!(super::config_attr("nixpkgs#hello"), None);
@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn takes_a_drv_path_as_is() {
-        let path = "/nix/store/rcfnhh5dg3n04xibyjgv5q84yps9ifcr-nixos-system-tank.drv";
+        let path = "/nix/store/rcfnhh5dg3n04xibyjgv5q84yps9ifcr-nixos-system-mypc.drv";
         assert_eq!(
             as_drv_path(path).map(|p| p.to_absolute_path()).as_deref(),
             Some(path)

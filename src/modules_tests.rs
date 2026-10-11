@@ -52,9 +52,9 @@ fn nixos_scope() -> Scope {
     }
 }
 
-fn tank_scope() -> Scope {
+fn me_scope() -> Scope {
     Scope {
-        prefix: "home-manager.users.tank.".to_owned(),
+        prefix: "home-manager.users.me.".to_owned(),
         glue: vec![
             "/nix/store/d-home-manager-path.drv".to_owned(),
             "/nix/store/e-home-manager-files.drv".to_owned(),
@@ -94,7 +94,7 @@ fn tank_scope() -> Scope {
 
 fn index() -> Index {
     Index {
-        scopes: vec![nixos_scope(), tank_scope()],
+        scopes: vec![nixos_scope(), me_scope()],
     }
 }
 
@@ -141,7 +141,7 @@ fn home_manager_requests_resolve_to_the_user_whose_glue_it_is() {
             "/nix/store/f-firefox.drv"
         ),
         Some(located(
-            "home-manager.users.tank.home.packages",
+            "home-manager.users.me.home.packages",
             &["/src/firefox.nix"]
         ))
     );
@@ -215,7 +215,7 @@ fn an_xdg_entry_beats_the_home_file_it_becomes() {
             "/nix/store/g-fonts.conf.drv"
         ),
         Some(located(
-            "home-manager.users.tank.xdg.configFile.\"fontconfig/fonts.conf\"",
+            "home-manager.users.me.xdg.configFile.\"fontconfig/fonts.conf\"",
             &["/src/fonts.nix"]
         ))
     );
