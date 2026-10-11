@@ -3,7 +3,7 @@ members = [] # Add sub-crate paths here as the project grows
 
 [package]
 name = "nix-why-build"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.95"
 description = "Explain why a Nix build compiles what no binary cache serves"

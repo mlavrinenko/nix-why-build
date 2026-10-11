@@ -72,6 +72,6 @@ groups:
       about.toml: 164f7eef129aeeaa07ffb1594025e17c3138218cc5a0f16d266ee2d7be91d25e
   release-notes:
     source:
-      Cargo.toml: ce58ddd1b8a9ab5da01a092d02a16db1357404712631fc3e7e5767ba22c0d093
+      Cargo.toml: 548cafb8d2bb0bfece452837d3dd97b99e3015ec7afc44e332c62668847ff916
     dependents:
-      CHANGELOG.md: daee4123b44d6831df7dddcaf723779a599327e3ce799c13495da233abee2083
+      CHANGELOG.md: cafe2dd027727e1aa7434e8f6b3a8168d120bd305a0910081ac0f9d53dc1989d

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-11
+
 ### Changed
 
 - The Linux release binaries and the Nix package are stripped, about 1 MB
@@ -75,5 +77,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Each GitHub release carries a `THIRD-PARTY-LICENSES.md` with the license text
   of every crate built into the binaries.
 
-[Unreleased]: https://github.com/mlavrinenko/nix-why-build/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/mlavrinenko/nix-why-build/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/mlavrinenko/nix-why-build/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mlavrinenko/nix-why-build/releases/tag/v0.1.0
