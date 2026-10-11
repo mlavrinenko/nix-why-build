@@ -48,7 +48,7 @@ groups:
       .config/nextest.toml: 367ed9a814800c344a521d1f326dca5072195b9c2c3afd620257b4136e2abb3e
       .config/wt.toml: ea9dc47a3927f3796d2fb0f8b375cfaccb4028d20173a857fa4064fc4ff57690
       .mmz/config.yaml: d1364468d61bd48b9ddf8d1f3fffd70e400873f00656c6db11c5cdab4b2adc4f
-      Justfile: 139dec92c716f30a2aa1ca8c4f62998828a8b3db7b60c29c88cfdd5fe02aa3eb
+      Justfile: 986f89b3390429e19b18545c50e1f7dd2f22428e88c918a627757fcdbf0978f1
       flake.nix: f9c2b7e8b682c64a7115b38ada6da612e978f7353c816ce26275524b5caecc14
       scripts/cover.sh: fc2943107746718e75b3d07092915cb60db0885b0f726fdc3b566ab4aeb292af
       scripts/crap.sh: f384281b2c68bc28fdde060f5f6d2e17cb56c1bb3ed569f560c8dbad96234368
@@ -58,8 +58,8 @@ groups:
       scripts/release.sh: 9ca4b58bdfb13c8c83c493442d5523c48baa22a51ef4a58b84e6717e64fab31b
       scripts/wt-carry-lcov.sh: 39b537a8a380b6fd1c88064bcfb2149a2207ba0ff390bf29c4bfa6e4b26fc650
     dependents:
-      AGENTS.md: 952a9e67f2e42bf1c6a3312443f35097f0fbafb632ccd114c885a610ad2faab7
-      CONTRIBUTING.md: ca32f7bc2e319823cb67228eed4efebd33f3136daddfeccad3207f0dad2ce224
+      AGENTS.md: 244ce951ae413fb60cf4e8c1a78b8ce4bfff35c11260fa43de330bdcfd5a1f06
+      CONTRIBUTING.md: f9ee331be8e9c90ac3cf970e832c91a902d37ff877dfdcaa244de22d44844e1f
   release-notes:
     source:
       Cargo.toml: be89584ca72cbf035cfe5153cbb4bef66a8e6b6795344495b17bea4681969847

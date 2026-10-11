@@ -13,6 +13,28 @@ just --list   # all of them, grouped
 Before you send a change, run `just fix-check`: it applies clippy's fixes and
 the formatters, then runs `just check`.
 
+## Worktrees
+
+Work in parallel in a sibling worktree. `just fork` makes one and `just land`
+merges it back; both wrap [worktrunk](https://worktrunk.dev) (`wt`, from the
+dev shell) with the flags this repo needs, because a bare `wt merge` squashes
+away each commit's `Refs:` footer and commits a dirty tree.
+
+```bash
+just fork <slug>           # a sibling worktree on a new branch <slug>
+just fork <slug> --base=@  # the same, from the current commit, not main
+just land                  # in the worktree: gate, wip check, fast-forward, remove
+```
+
+A worktree only gets commits, never your working tree, so commit first. Do not
+`git stash` in one: all worktrees share a single stash list.
+
+[.config/wt.toml](.config/wt.toml) holds the hooks, so a clone with nix and
+direnv needs no worktrunk config of its own. Before the fast-forward they run
+`just check` and `mt check --commits main..HEAD`, which refuses a branch that
+names a task still `wip`. After it they carry the gate records (`mmz --import`)
+and a fresh coverage lcov to the primary checkout.
+
 ## Code Style
 
 All clippy lints are set to `deny`, so a violation does not compile. Key

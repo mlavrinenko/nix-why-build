@@ -61,9 +61,13 @@
   run leaves main pushed and no tag. A release whose workflow failed
   is finished on the same tag with `gh workflow run <release workflow> -f
   tag=vX.Y.Z`; a pushed tag never moves.
-- Parallel agents each get a worktree from `just fork <name>`: a branch,
-  `../nix-why-build-<name>` and its dev shell allowed. Gates tolerate several
-  forks at once; merge each back and re-run `just check` on the result.
+- Parallel agents each get a worktree from `just fork <slug>`: a new branch
+  named `<slug>`, placed by worktrunk beside the checkout, its dev shell allowed.
+  `just land`, run in that worktree, gates, checks no named task is left `wip`,
+  fast-forwards main and removes it. Both wrap
+  [worktrunk](https://worktrunk.dev); [.config/wt.toml](.config/wt.toml) holds
+  the hooks. Never run a bare `wt merge`: it squashes away the `Refs:` footers.
+  Gates tolerate several forks at once; re-run `just check` on the merged result.
 - Eating your own dog food: the tool should use itself if applicable.
 - `just oracle <installable>` diffs `to_build` with nix's own dry-run plan on an
   empty store; it must print nothing, and it refuses an empty `to_build`. CI

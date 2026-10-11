@@ -51,9 +51,8 @@ status:
 outdatty-update:
     outdatty update
 
-# `wt` places it at `../nix-why-build.<slug>` unless the user configures
-# otherwise. Extra flags go to `wt switch`, e.g. `--base=@` to branch from
-# HEAD, not main.
+# `wt` places it beside the checkout, by the user's worktrunk path template.
+# Extra flags go to `wt switch`, e.g. `--base=@` to branch from HEAD, not main.
 [doc("Fork a sibling worktree on a new branch, dev shell allowed")]
 [group("daily")]
 [positional-arguments]
