@@ -41,7 +41,7 @@ jobs:
       latest: ${{ steps.meta.outputs.latest }}
     steps:
       # `refs/tags/` makes checkout fail on a dispatch input that names no tag.
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
         with:
           ref: refs/tags/${{ inputs.tag || github.ref_name }}
           fetch-depth: 0
@@ -73,7 +73,7 @@ jobs:
     needs: meta
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
         with:
           ref: refs/tags/${{ needs.meta.outputs.tag }}
       - uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
@@ -118,7 +118,7 @@ jobs:
             os: macos-latest
 
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
         with:
           ref: refs/tags/${{ needs.meta.outputs.tag }}
 
@@ -182,7 +182,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: crates-io
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
         with:
           ref: refs/tags/${{ needs.meta.outputs.tag }}
 
@@ -216,7 +216,7 @@ jobs:
     needs: [meta, check, build, publish]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6.0.3
+      - uses: actions/checkout@v7.0.1
         with:
           ref: refs/tags/${{ needs.meta.outputs.tag }}
 
