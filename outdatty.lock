@@ -44,14 +44,14 @@ groups:
       src/walk.rs: 0750933afbec635cbd24d99df0abf3c2694c400384be2aca220bb15cdad521ce
       src/walk_tests.rs: b363cd27130966218b3a0cdc6b7345acb0bdd83d116dae414a704645ec0e9d45
     dependents:
-      README.md: d397580fe3bda949994139e56915c96e9fe86a8f98954500a697c5b4c1fdb3d4
+      README.md: 25a90f60321c0b4c7af35c76a9d58e2d9fb16431ebf3ca947f660e6cf942d955
       docs/architecture.md: 827e9fdf5ff394f00f2023eea14d5111cd53a7c84b41cc3d94a30afac86241c2
   dev-docs:
     source:
       .config/nextest.toml: 367ed9a814800c344a521d1f326dca5072195b9c2c3afd620257b4136e2abb3e
       .config/wt.toml: ea9dc47a3927f3796d2fb0f8b375cfaccb4028d20173a857fa4064fc4ff57690
       .mmz/config.yaml: d1364468d61bd48b9ddf8d1f3fffd70e400873f00656c6db11c5cdab4b2adc4f
-      Justfile: 986f89b3390429e19b18545c50e1f7dd2f22428e88c918a627757fcdbf0978f1
+      Justfile: 4016e12679a8f9d5e43a3057ec6cd733536637d675360f7453dd56b1ba6537ca
       flake.nix: f9c2b7e8b682c64a7115b38ada6da612e978f7353c816ce26275524b5caecc14
       scripts/cover.sh: fc2943107746718e75b3d07092915cb60db0885b0f726fdc3b566ab4aeb292af
       scripts/crap.sh: f384281b2c68bc28fdde060f5f6d2e17cb56c1bb3ed569f560c8dbad96234368
@@ -67,4 +67,4 @@ groups:
     source:
       Cargo.toml: be89584ca72cbf035cfe5153cbb4bef66a8e6b6795344495b17bea4681969847
     dependents:
-      CHANGELOG.md: 702d019cf40b5985016c7d9e291caf643f012ac69f969069a71fd8b6100c6459
+      CHANGELOG.md: e8a09cc630c8053304f3bc45d15205f24f9fe36682b09cb53d4f9442aff188fb
