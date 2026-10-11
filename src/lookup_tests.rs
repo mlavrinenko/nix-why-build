@@ -2,7 +2,7 @@ use crate::counterparts::{Input, Lookup};
 use crate::drv::{Drv, read};
 use crate::fixture_tests::{DrvSpec, FakeStore, spec};
 
-use super::{distinct_keys, key_of, tried};
+use super::{distinct_keys, input_of, key_of, tried};
 
 fn drv(store: &FakeStore, spec: &DrvSpec) -> Drv {
     read(store.dir(), &store.add(spec)).expect("readable drv")
@@ -68,6 +68,34 @@ fn fetches_and_glue_are_not_looked_up_and_keys_are_distinct() {
         distinct_keys(&[&fetch, &glue, &hello, &again], "x86_64-linux"),
         [("hello".to_owned(), sets(&[""]))]
     );
+}
+
+#[tokio::test]
+async fn a_root_is_an_input_of_each_name_that_takes_it_in_once_in_name_order() {
+    let store = FakeStore::new();
+    let glue = store.add(&spec("config.toml"));
+    let files = store.add(&spec("home-manager-files").input(&glue, &["out"]));
+    let unit = store.add(&spec("unit").input(&glue, &["out"]));
+    let other_unit = store.add(&spec("unit").input(&glue, &["out"]).env("x", "1"));
+    let top = store.add(
+        &spec("system")
+            .input(&files, &["out"])
+            .input(&unit, &["out"])
+            .input(&other_unit, &["out"]),
+    );
+    let graph = crate::walk::walk(
+        store.dir(),
+        &top,
+        &crate::fixture_tests::FakeCache::default(),
+        &|_| {},
+    )
+    .await;
+    let found = input_of(&graph);
+    assert_eq!(
+        found.get(&glue).map(Vec::as_slice),
+        Some(&["home-manager-files".to_owned(), "unit".to_owned()][..])
+    );
+    assert_eq!(found.get(&top), None);
 }
 
 #[test]

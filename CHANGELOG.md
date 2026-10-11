@@ -37,6 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A `cargoLock.lockFile` package's crates and their fetches say `vendored`
   and share one entry, instead of hundreds of `unknown` and `fetch` roots.
   The fix is `cargoHash`, which fetches them all in one.
+- A root with no pname names what takes it in, like `unknown: it has no
+  pname to look up in nixpkgs; an input of home-manager-files`.
 - Any installable `nix build` takes works, and so does a `.drv` path. NixOS,
   home-manager and nix-darwin configurations resolve to what they build,
   quoted dotted names included.

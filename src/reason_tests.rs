@@ -54,7 +54,7 @@ fn a_fetch_names_its_urls_from_env_or_structured_attrs() {
     );
     let bare = drv(&store, &spec("bare.tar.gz").fixed());
     let facts = Facts::default();
-    let urls = |root: &Drv| match classify(store.dir(), root, Lookup::Skipped("n/a"), &facts) {
+    let urls = |root: &Drv| match classify(store.dir(), root, &[], Lookup::Skipped("n/a"), &facts) {
         Reason::Fetch { urls } => urls,
         other => panic!("not a fetch: {other:?}"),
     };
@@ -71,7 +71,7 @@ fn without_a_pname_or_a_lookup_it_says_unknown_and_why() {
     let root = drv(&store, &llama());
     let facts = Facts::default();
     assert_eq!(
-        classify(store.dir(), &glue, found(&[], &[]), &facts),
+        classify(store.dir(), &glue, &[], found(&[], &[]), &facts),
         Reason::Unknown {
             because: "it has no pname to look up in nixpkgs".to_owned()
         }
@@ -80,6 +80,7 @@ fn without_a_pname_or_a_lookup_it_says_unknown_and_why() {
         classify(
             store.dir(),
             &root,
+            &[],
             Lookup::Skipped("no nixpkgs input"),
             &facts
         ),
@@ -90,11 +91,36 @@ fn without_a_pname_or_a_lookup_it_says_unknown_and_why() {
 }
 
 #[test]
+fn without_a_pname_it_names_what_takes_it_in_three_at_most() {
+    let store = FakeStore::new();
+    let glue = drv(&store, &spec("config.toml"));
+    let because = |input_of: &[&str]| match classify(
+        store.dir(),
+        &glue,
+        &names(input_of),
+        found(&[], &[]),
+        &Facts::default(),
+    ) {
+        Reason::Unknown { because } => because,
+        other => panic!("not unknown: {other:?}"),
+    };
+    assert_eq!(
+        because(&["home-manager-files"]),
+        "it has no pname to look up in nixpkgs; an input of home-manager-files"
+    );
+    assert_eq!(
+        because(&["a", "b", "c", "d", "e"]),
+        "it has no pname to look up in nixpkgs; an input of a, b, c +2"
+    );
+    assert_eq!(because(&[]), "it has no pname to look up in nixpkgs");
+}
+
+#[test]
 fn a_local_only_root_is_local_only_before_anything_else() {
     let store = FakeStore::new();
     let root = drv(&store, &llama().env("allowSubstitutes", ""));
     assert_eq!(
-        classify(store.dir(), &root, found(&[], &[]), &Facts::default()),
+        classify(store.dir(), &root, &[], found(&[], &[]), &Facts::default()),
         Reason::LocalOnly
     );
 }
@@ -114,7 +140,8 @@ fn a_cargo_lock_crate_and_its_fetch_are_vendored_while_other_fetches_stay_fetche
     let other = drv(&store, &spec("src.tar.gz").fixed());
     let glue = drv(&store, &spec("policies.json"));
     let facts = Facts::default();
-    let category = |root: &Drv| classify(store.dir(), root, found(&[], &[]), &facts).category();
+    let category =
+        |root: &Drv| classify(store.dir(), root, &[], found(&[], &[]), &facts).category();
     assert_eq!(category(&fetch), "vendored");
     assert_eq!(category(&unpack), "vendored");
     assert_eq!(category(&other), "fetch");
@@ -130,7 +157,13 @@ fn no_candidate_at_all_is_no_counterpart_and_lists_what_was_tried() {
         "nixpkgs#python3Packages.kache".to_owned(),
     ];
     assert_eq!(
-        classify(store.dir(), &root, found(&[], &tried), &Facts::default()),
+        classify(
+            store.dir(),
+            &root,
+            &[],
+            found(&[], &tried),
+            &Facts::default()
+        ),
         Reason::NoCounterpart { tried }
     );
 }
@@ -141,7 +174,7 @@ fn identical(edit: impl Fn(&mut Candidate), facts: &Facts) -> Reason {
     let root = drv(&store, &llama());
     let mut same = candidate(&root.path, "nixpkgs", "", "0.5.0");
     edit(&mut same);
-    classify(store.dir(), &root, found(&[same], &[]), facts)
+    classify(store.dir(), &root, &[], found(&[same], &[]), facts)
 }
 
 #[test]
@@ -245,7 +278,7 @@ fn an_override_diffs_against_a_cached_counterpart_first_then_the_closest() {
         against,
         against_cached,
         diff,
-    } = classify(store.dir(), &root, found(&candidates, &[]), &facts)
+    } = classify(store.dir(), &root, &[], found(&candidates, &[]), &facts)
     else {
         panic!("not an override");
     };
@@ -267,6 +300,7 @@ fn an_override_against_nothing_cached_still_names_the_closest() {
     } = classify(
         store.dir(),
         &root,
+        &[],
         found(&[candidate(&theirs, "nixpkgs", "", "0.5.0")], &[]),
         &Facts::default(),
     )
@@ -289,6 +323,7 @@ fn no_counterpart_of_the_same_version_is_unknown_naming_the_versions_found() {
         classify(
             store.dir(),
             &root,
+            &[],
             found(&[candidate(&older, "nixpkgs", "", "0.4.0"), unversioned], &[]),
             &Facts::default()
         ),
@@ -299,114 +334,8 @@ fn no_counterpart_of_the_same_version_is_unknown_naming_the_versions_found() {
     );
 }
 
-fn names(list: &[&str]) -> Vec<String> {
+pub(super) fn names(list: &[&str]) -> Vec<String> {
     list.iter().map(|&name| name.to_owned()).collect()
-}
-
-fn check(cases: Vec<(Reason, &str, &str)>) {
-    for (reason, category, detail) in cases {
-        assert_eq!(reason.category(), category);
-        assert_eq!(reason.detail(), detail);
-    }
-}
-
-#[test]
-fn override_details_name_what_differs() {
-    let overridden = |cached: bool, diff: crate::diff::Diff| Reason::Overridden {
-        against: "nixpkgs#x".to_owned(),
-        against_cached: cached,
-        diff,
-    };
-    let big = crate::diff::Diff {
-        added: names(&["postPatch"]),
-        changed: names(&["a", "b", "c", "d"]),
-        inputs_added: names(&["blas-3"]),
-        inputs_changed: names(&["zlib-1.3", "cmake-4"]),
-        ..crate::diff::Diff::default()
-    };
-    let small = crate::diff::Diff {
-        removed: names(&["doCheck"]),
-        inputs_removed: names(&["a", "b"]),
-        ..crate::diff::Diff::default()
-    };
-    check(vec![
-        (
-            overridden(true, big),
-            "overridden",
-            "vs nixpkgs#x (cached): postPatch added; a, b, c +1 changed; input blas-3 added; inputs zlib-1.3, cmake-4 built differently",
-        ),
-        (
-            overridden(false, small),
-            "overridden",
-            "vs nixpkgs#x (not cached either): doCheck removed; inputs a, b removed",
-        ),
-        (
-            overridden(true, crate::diff::Diff::default()),
-            "overridden",
-            "vs nixpkgs#x (cached): no attribute differs",
-        ),
-    ]);
-}
-
-#[test]
-fn other_details_read_as_one_line_of_evidence() {
-    let x = || "nixpkgs#x".to_owned();
-    check(vec![
-        (
-            Reason::Fetch {
-                urls: names(&["https://x/a.exe", "https://y/a.exe"]),
-            },
-            "fetch",
-            "no cache has https://x/a.exe",
-        ),
-        (
-            Reason::Fetch { urls: vec![] },
-            "fetch",
-            "no cache has the source",
-        ),
-        (
-            Reason::Unfree { against: x() },
-            "unfree",
-            "Hydra skips unfree nixpkgs#x",
-        ),
-        (
-            Reason::NotBuiltByHydra {
-                against: x(),
-                because: "meta.broken".to_owned(),
-            },
-            "not-built-by-hydra",
-            "nixpkgs#x has meta.broken",
-        ),
-        (
-            Reason::NewerThanCache { against: x() },
-            "newer-than-cache",
-            "nixpkgs#x is unchanged, but that nixpkgs' hello is not cached either",
-        ),
-        (
-            Reason::NoCounterpart {
-                tried: names(&["a#k", "b#k", "a#K", "b#K"]),
-            },
-            "no-counterpart",
-            "no nixpkgs attribute matches its pname (tried a#k, b#k, a#K +1)",
-        ),
-        (
-            Reason::Vendored,
-            "vendored",
-            "cargoLock.lockFile builds each crate in its own derivation; cargoHash fetches them all in one",
-        ),
-        (
-            Reason::LocalOnly,
-            "local-only",
-            "allowSubstitutes = false: nix builds it even when a cache has it",
-        ),
-        (
-            Reason::Unknown {
-                because: "why not".to_owned(),
-            },
-            "unknown",
-            "why not",
-        ),
-    ]);
 }
 
 #[test]
@@ -426,9 +355,13 @@ fn a_counterpart_of_the_same_name_counts_when_versions_are_spelled_differently()
     );
     let mut glibc = candidate(&theirs, "nixpkgs", "", "2.42");
     glibc.attr = "glibcLocales".to_owned();
-    let Reason::Overridden { against, diff, .. } =
-        classify(store.dir(), &root, found(&[glibc], &[]), &Facts::default())
-    else {
+    let Reason::Overridden { against, diff, .. } = classify(
+        store.dir(),
+        &root,
+        &[],
+        found(&[glibc], &[]),
+        &Facts::default(),
+    ) else {
         panic!("not an override");
     };
     assert_eq!(against, "nixpkgs#glibcLocales");
@@ -448,6 +381,7 @@ fn a_structured_single_url_is_a_fetch_url_too() {
         classify(
             store.dir(),
             &root,
+            &[],
             Lookup::Skipped("n/a"),
             &Facts::default()
         ),
@@ -464,15 +398,4 @@ fn drv_names_drop_the_hash_and_the_suffix() {
         "glibc-locales-2.42-84"
     );
     assert_eq!(super::drv_name("plain"), "plain");
-}
-
-#[test]
-fn a_reason_prints_its_category_then_its_evidence() {
-    let reason = Reason::Unfree {
-        against: "nixpkgs#steam".to_owned(),
-    };
-    assert_eq!(
-        reason.to_string(),
-        "unfree: Hydra skips unfree nixpkgs#steam"
-    );
 }

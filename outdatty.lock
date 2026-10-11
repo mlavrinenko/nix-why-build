@@ -18,8 +18,8 @@ groups:
       src/human_tests.rs: b2b9c2c40d576e2ce2f0b72e37adffae8dcf974739850b6d24435a9dac47c74c
       src/index.nix: 94d446dcb4715fdcbe262f04af5c3e5d8142d3945ce56b8ece93fcd069a762c8
       src/lib.rs: 9e357c69617ba10a4df8e86b93f94ff260ee4c6d707bd253ac5d48ba65b1d438
-      src/lookup.rs: 8e0a26f609ef7ccc22de9368dd711757d06d5d05a84ee001916e1f9dda64b3f6
-      src/lookup_tests.rs: 34bd848c67bbfdd5783967bae4bc8e3a9233e6e3e4bbe62cae2337ea4bf722f9
+      src/lookup.rs: cb4efc5603379e17428e7c89c7af362b2db1f1579f1ae044df60ccbef529cec6
+      src/lookup_tests.rs: ff89ee41e9be88bf09b8cbbc8c70f719739c81b63c015524f577bf91d5654e18
       src/main.rs: aad810a17567635035b13e5522595f9f5f1f6df11b0b11cefcb381b5b33d4a8c
       src/modules.rs: f042efd7951e14c55a27142b8b95f008e37cfe8b999de055fd54e8594956df61
       src/modules_tests.rs: 4b21ec6e0fe6680ff80dc9c523bafde68612bf56b46f17b6e714ed17945d58c2
@@ -27,8 +27,9 @@ groups:
       src/nix_index_tests.rs: 65dd85ef8c269d6be677d7b4e225ba0e0ef868ce486a8e718853bd74abed15da
       src/nix_tests.rs: 31904d3cd654b26b75bd3687a495cd60955f25f64f8c846a1c084b94843ae624
       src/progress.rs: 3b36c35681834df5bc80c149211ff88691c4d52c7beaf1a776b79bb290e4f3c8
-      src/reason.rs: 51f9b77342d5c6fc2e65088d40a8b6f02a79549b84c558b368d67174f184859e
-      src/reason_tests.rs: b540beeab39a06f33756c98f76a70afae814805ca158ea3a3bdcee1d54c66aca
+      src/reason.rs: 53b4e5b776feaf8cbae90a5707e1d5883d0d0c49a26f9d66aea4f8ca288bc58d
+      src/reason_detail_tests.rs: 5e27bdd381f2d096f1c8bf4095fc3b9b4c835488ef41a80af543fd6e7d5cb408
+      src/reason_tests.rs: 30232e17bca71a582f5f2dbe3884af4b02c07bb51b340e6e0e9cf0c434e2682b
       src/renamed.nix: 70a368df8a9515fdab6e2d19e2fab9db530857960be1a20ccfeef10b0db3298f
       src/renamed.rs: e334d9025d1947c0822b48ce6f42169e2f22256fb456ca5479a7513625b215a3
       src/report.rs: 9393e7a28fe9ef1be88bc92529808db9d09ce30734c8ae2b793b810d81e76594
@@ -66,4 +67,4 @@ groups:
     source:
       Cargo.toml: be89584ca72cbf035cfe5153cbb4bef66a8e6b6795344495b17bea4681969847
     dependents:
-      CHANGELOG.md: 66df0fad0f643fb0b7f4ba517b30f2347d6da21af8f5cb2afe1a1d6287c2be5a
+      CHANGELOG.md: 702d019cf40b5985016c7d9e291caf643f012ac69f969069a71fd8b6100c6459

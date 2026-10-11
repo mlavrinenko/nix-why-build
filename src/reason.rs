@@ -200,9 +200,16 @@ pub enum Lookup<'a> {
     Skipped(&'a str),
 }
 
-/// Classifies `root`, reading `.drv` files from `store_dir`.
+/// Classifies `root`, which the derivations named in `input_of` take in,
+/// reading `.drv` files from `store_dir`.
 #[must_use]
-pub fn classify(store_dir: &Path, root: &Drv, lookup: Lookup<'_>, facts: &Facts) -> Reason {
+pub fn classify(
+    store_dir: &Path,
+    root: &Drv,
+    input_of: &[String],
+    lookup: Lookup<'_>,
+    facts: &Facts,
+) -> Reason {
     if root.local_only {
         return Reason::LocalOnly;
     }
@@ -217,7 +224,11 @@ pub fn classify(store_dir: &Path, root: &Drv, lookup: Lookup<'_>, facts: &Facts)
         };
     }
     if root.pname.is_none() {
-        return unknown("it has no pname to look up in nixpkgs");
+        let mut because = "it has no pname to look up in nixpkgs".to_owned();
+        if !input_of.is_empty() {
+            because.push_str(&format!("; an input of {}", capped(input_of, 3)));
+        }
+        return unknown(&because);
     }
     let (candidates, tried) = match lookup {
         Lookup::Skipped(why) => return unknown(why),
@@ -369,3 +380,7 @@ fn fetch_urls(env: &std::collections::BTreeMap<String, String>) -> Vec<String> {
 #[cfg(test)]
 #[path = "reason_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "reason_detail_tests.rs"]
+mod detail_tests;

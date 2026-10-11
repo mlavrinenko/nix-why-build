@@ -2,7 +2,7 @@
 //! `.drv` alone, the rest against their counterparts in the flake's nixpkgs
 //! inputs, whose outputs (and each input's `hello`) the caches are asked about.
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
 
 use nix_derivation::StorePath;
@@ -75,6 +75,7 @@ pub async fn classify_roots(
         Ok(found) => facts(store_dir, found, substituters).await,
         Err(_) => Facts::default(),
     };
+    let input_of = input_of(graph);
     let reasons = roots
         .iter()
         .map(|root| {
@@ -95,9 +96,10 @@ pub async fn classify_roots(
                     &tried,
                 ),
             };
+            let takers = input_of.get(&root.path).map_or(&[][..], Vec::as_slice);
             (
                 root.path.to_absolute_path(),
-                reason::classify(store_dir, root, lookup, &facts),
+                reason::classify(store_dir, root, takers, lookup, &facts),
             )
         })
         .collect();
@@ -141,6 +143,21 @@ async fn find(
             warnings.push(format!("nixpkgs counterparts unknown: {err}"));
             format!("looking it up in nixpkgs failed: {err}")
         })
+}
+
+/// For every derivation built, the names of the builds that take it in, once
+/// each, in name order.
+fn input_of(graph: &Graph) -> HashMap<&StorePath, Vec<String>> {
+    let mut names: HashMap<&StorePath, BTreeSet<&str>> = HashMap::new();
+    for build in graph.builds() {
+        for input in graph.build_inputs(build) {
+            names.entry(input).or_default().insert(graph.name(build));
+        }
+    }
+    names
+        .into_iter()
+        .map(|(input, names)| (input, names.into_iter().map(str::to_owned).collect()))
+        .collect()
 }
 
 /// The keys of every root worth a lookup, once each.
