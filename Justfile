@@ -51,12 +51,24 @@ status:
 outdatty-update:
     outdatty update
 
-[doc("Make ../nix-why-build-NAME on branch fork/NAME, dev shell allowed")]
+# `wt` places it at `../nix-why-build.<slug>` unless the user configures
+# otherwise. Extra flags go to `wt switch`, e.g. `--base=@` to branch from
+# HEAD, not main.
+[doc("Fork a sibling worktree on a new branch, dev shell allowed")]
 [group("daily")]
-fork NAME:
-    git worktree add -q -b 'fork/{{ NAME }}' '../nix-why-build-{{ NAME }}' HEAD
-    if command -v direnv >/dev/null; then direnv allow '../nix-why-build-{{ NAME }}'; fi
-    echo "../nix-why-build-{{ NAME }} on fork/{{ NAME }}"
+[positional-arguments]
+fork SLUG *ARGS:
+    wt switch --create --yes "$@"
+
+# Run in the worktree. `--no-squash --no-commit` keeps each commit's `Refs:`
+# footer and refuses a dirty tree instead of committing it; the `pre-merge`
+# hooks in .config/wt.toml run the gate and the wip check before the
+# fast-forward.
+[doc("Gate, fast-forward the branch onto main and remove its worktree")]
+[group("daily")]
+[positional-arguments]
+land *ARGS:
+    wt merge --no-squash --no-commit --yes "$@"
 
 [doc("Install this checkout into ~/.cargo/bin")]
 [group("daily")]

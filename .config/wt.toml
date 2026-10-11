@@ -1,0 +1,29 @@
+# Worktrunk (`wt`) project hooks: everything a fresh clone needs to fork work
+# and land it, so no user-level hook has to exist. `just fork` and `just land`
+# run the commands that set the merge defaults, which project config cannot.
+# Hooks run through `direnv exec .` because the dev shell, not the user profile,
+# holds `just`, `mt` and `mmz`. Docs: https://worktrunk.dev/hook/
+
+# A new worktree gets its `.envrc` allowed, so its dev shell loads.
+[[pre-start]]
+allow = "direnv allow"
+
+# The gate, then the wip check. `just check` is memoized by mmz, so a gate that
+# already passed is a no-op. The check reads the branch's commits: the
+# `named-tasks-finish-at-the-tip` rule of `mt` refuses a branch that names a
+# task still `wip` at its tip, so it cannot land without its `mt done` flip.
+[[pre-merge]]
+gate = "direnv exec . just check"
+
+[[pre-merge]]
+tasks = "direnv exec . mt check --commits {{ target }}..HEAD"
+
+# Runs inside the worktree being removed, so the gate records step into the
+# primary checkout and import from here (`mmz --import` refuses its own
+# checkout). A copied record is still judged against the primary's tree, so a
+# branch that did not land cannot make a gate read fresh there. The lcov carry
+# is gated on a landed merge by its script. Neither may fail the merge, which
+# has already landed.
+[[pre-remove]]
+records = "cd {{ primary_worktree_path }} && direnv exec . mmz --import {{ worktree_path }} || true"
+lcov = "bash scripts/wt-carry-lcov.sh {{ primary_worktree_path }} || true"

@@ -51,6 +51,7 @@ groups:
       - Justfile
       - scripts/**
       - .config/nextest.toml
+      - .config/wt.toml
       - .mmz/config.yaml
     dependents:
       - CONTRIBUTING.md

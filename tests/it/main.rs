@@ -3,6 +3,7 @@
 mod cli;
 mod color;
 mod progress;
+mod wt_carry_lcov;
 
 #[path = "../support/chain.rs"]
 mod chain;
