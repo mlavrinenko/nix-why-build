@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The Linux release binaries and the Nix package are stripped, about 1 MB
   lighter.
+- Releases reach crates.io through Trusted Publishing, so no registry token
+  sits in the repo's secrets.
 
 ## [0.1.0] - 2026-10-11
 
