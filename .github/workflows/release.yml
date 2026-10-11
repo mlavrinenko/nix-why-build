@@ -159,7 +159,7 @@ jobs:
           toolchain: stable
           targets: ${{ matrix.target }}
 
-      - uses: Swatinem/rust-cache@v2.9.1
+      - uses: Swatinem/rust-cache@v2.9.2
         if: runner.os == 'macOS'
         with:
           key: ${{ matrix.target }}
@@ -190,7 +190,7 @@ jobs:
         with:
           toolchain: stable
 
-      - uses: Swatinem/rust-cache@v2.9.1
+      - uses: Swatinem/rust-cache@v2.9.2
 
       # A version already on crates.io (a re-run, or a hand `cargo publish`) is
       # skipped rather than failed, so the GitHub release below still happens.
