@@ -81,3 +81,28 @@ The rest is on [docs.rs](https://docs.rs/nix-why-build).
 ## Architecture
 
 See [the docs](docs/architecture.md).
+
+## Thanks
+
+This tool stands on other people's crates. Big thanks to
+
+- [nix-derivation](https://crates.io/crates/nix-derivation) and
+  [nix-narinfo](https://crates.io/crates/nix-narinfo) by Cachix, which parse
+  every `.drv` and check every narinfo signature. The walk is built on them.
+- [tokio](https://crates.io/crates/tokio),
+  [reqwest](https://crates.io/crates/reqwest) and
+  [futures](https://crates.io/crates/futures), which ask all the caches at once.
+- [serde](https://crates.io/crates/serde) and
+  [serde_json](https://crates.io/crates/serde_json) for `--json`, and
+  [schemars](https://crates.io/crates/schemars) for its schema.
+- [clap](https://crates.io/crates/clap) for the flags and
+  [anstyle](https://crates.io/crates/anstyle) for the colors.
+- [thiserror](https://crates.io/crates/thiserror),
+  [anyhow](https://crates.io/crates/anyhow),
+  [log](https://crates.io/crates/log) and
+  [env_logger](https://crates.io/crates/env_logger) for errors and logs.
+- [assert_cmd](https://crates.io/crates/assert_cmd),
+  [predicates](https://crates.io/crates/predicates),
+  [tempfile](https://crates.io/crates/tempfile) and
+  [ed25519-dalek](https://crates.io/crates/ed25519-dalek), which keep the
+  tests honest.
