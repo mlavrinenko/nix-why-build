@@ -140,10 +140,13 @@ check-file-size:
 check-dry:
     scripts/quiet.sh jscpd --no-tips -k 70 -f rust --exit-code 1 -r ai src tests
 
+# CI's dev shell has no MindTape, and its `mt` is GNU's tape tool, so CI
+# skips this arm; the commit hooks run it on every commit. Task:
+# bring-mindtape-back-into-the-ci-dev-shell.
 [doc("Validate the task backlog")]
 [group("gate")]
 check-tasks:
-    mt check -q
+    if [ -n "$CI" ]; then echo "check-tasks: skipped on CI, which has no MindTape"; else mt check -q; fi
 
 [doc("Fail when docs lag behind their sources")]
 [group("gate")]
