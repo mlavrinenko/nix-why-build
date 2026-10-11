@@ -3,7 +3,7 @@
 #show: task.with(
   title: "Bump actions/checkout to v7",
   status: done(2026, 10, 11),
-  tags: ("(\"tooling\",)",),
+  tags: ("tooling",),
   estimate: (src-files: 1),
 )
 
