@@ -242,7 +242,7 @@ async fn tells_each_level_before_asking_about_it() {
 }
 
 /// The fixture's cache answers `Query` here, where the walk lives: the
-/// fixture is shared with `tests/cli.rs`, which cannot see this trait.
+/// fixture is shared with `tests/it/cli.rs`, which cannot see this trait.
 impl Query for Fake {
     async fn query(
         &self,

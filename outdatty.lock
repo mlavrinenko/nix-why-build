@@ -39,9 +39,9 @@ groups:
       src/style_tests.rs: 0315e89f51baed302d3946787d1c33336c2c18263df643fe2a79c1020ae12200
       src/terminal.rs: e1b359e4896e7af838056776e40226856bba34ec486f3df3735cbcce6d1178d3
       src/walk.rs: 0750933afbec635cbd24d99df0abf3c2694c400384be2aca220bb15cdad521ce
-      src/walk_tests.rs: 8dae925847f55922ff033ee2a34430097a4b22fdbb439512f675c1861c45bc41
+      src/walk_tests.rs: b363cd27130966218b3a0cdc6b7345acb0bdd83d116dae414a704645ec0e9d45
     dependents:
-      README.md: 8135a6f127ea026c4f61e68cce40e931ed28df8db95b6acd72f86f725aed0057
+      README.md: 19018c8ad53e5ff0afb15220769be9c5c011707b59f46c25cf6d27524178934f
       docs/architecture.md: 4885f57bb7e25aee75d4f2283de7361ddc8cc5daa0c705f122edf77c0571771e
   dev-docs:
     source:
@@ -57,7 +57,7 @@ groups:
       scripts/release.sh: 9ca4b58bdfb13c8c83c493442d5523c48baa22a51ef4a58b84e6717e64fab31b
     dependents:
       AGENTS.md: 1a5cc8356a79f485c0d7e706b8662752690a16e3f03997dca4c073426a606620
-      CONTRIBUTING.md: b58a1c6f0f24d2dcff4ee8db8fcc81b3deba9f178fa4de177e67194dea89051f
+      CONTRIBUTING.md: 762ab01c37ba77b7f45e87b3a7a5f32d673765f3e696c0a4aa3b7c21e3860b81
   release-notes:
     source:
       Cargo.toml: be89584ca72cbf035cfe5153cbb4bef66a8e6b6795344495b17bea4681969847

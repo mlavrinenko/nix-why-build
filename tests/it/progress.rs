@@ -5,13 +5,8 @@ use std::sync::{Arc, Mutex};
 use assert_cmd::Command;
 use nix_why_build::{Options, Progress};
 
-#[path = "support/chain.rs"]
-mod chain;
-#[path = "support/fixture.rs"]
-mod fixture;
-
-use chain::Chain;
-use fixture::PUBLIC;
+use crate::chain::Chain;
+use crate::fixture::PUBLIC;
 
 #[tokio::test]
 async fn explain_reports_each_phase_to_the_callback_and_skips_nixpkgs_without_a_flake() {

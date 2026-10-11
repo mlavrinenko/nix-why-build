@@ -2,13 +2,8 @@
 
 use assert_cmd::Command;
 
-#[path = "support/chain.rs"]
-mod chain;
-#[path = "support/fixture.rs"]
-mod fixture;
-
-use chain::Chain;
-use fixture::PUBLIC;
+use crate::chain::Chain;
+use crate::fixture::PUBLIC;
 
 const BOLD_APP: &str = "\x1b[1mapp-1.0\x1b[0m";
 

@@ -41,7 +41,7 @@ excluded from coverage, so anything there goes untested.
 - Unit tests live inline in a `#[cfg(test)] mod tests` next to their code.
 - CLI and integration tests live in `tests/` and drive the binary with
   [`assert_cmd`](https://docs.rs/assert_cmd) and
-  [`predicates`](https://docs.rs/predicates), see `tests/cli.rs`.
+  [`predicates`](https://docs.rs/predicates), see `tests/it/cli.rs`.
 - `just test` runs `cargo nextest run`, one process per test, plus
   `cargo test --doc`, which nextest skips. A green run prints the summary line.
   `just cover` instruments the same runner. The output level lives in

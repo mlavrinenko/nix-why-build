@@ -4,10 +4,7 @@ use assert_cmd::Command;
 use nix_derivation::StorePath;
 use predicates::prelude::*;
 
-#[path = "support/fixture.rs"]
-mod fixture;
-
-use fixture::{FakeStore, PUBLIC, SECRET, file_cache, narinfo, spec};
+use crate::fixture::{FakeStore, PUBLIC, SECRET, file_cache, narinfo, spec};
 
 /// A store where `lib` is served and everything else misses:
 /// `system` (glue) -> `system-path` -> `app-1.0` -> `lib-1.0` (served),
