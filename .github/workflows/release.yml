@@ -205,9 +205,25 @@ jobs:
     needs: [meta, build, publish]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6.0.3
+        with:
+          ref: refs/tags/${{ needs.meta.outputs.tag }}
+
       - uses: actions/download-artifact@v8.0.1
         with:
           merge-multiple: true
+
+      # The notes open with the version's CHANGELOG section; GitHub's generated
+      # list of PRs follows it. `just release` already refused a version with no
+      # dated section, so an empty one here means the heading drifted.
+      - name: Extract the changelog section
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          awk -v v="$VERSION" '/^## \[/ { p = index($0, "## [" v "]") == 1; next } p' \
+            CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md" \
+            || { echo "::error::CHANGELOG.md has no section for $VERSION"; exit 1; }
 
       # Updates the release in place when it exists, so a re-run is safe.
       - name: Create GitHub Release
@@ -215,6 +231,7 @@ jobs:
         with:
           tag_name: ${{ needs.meta.outputs.tag }}
           make_latest: ${{ needs.meta.outputs.latest }}
+          body_path: ${{ runner.temp }}/notes.md
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: ${{ needs.meta.outputs.binary }}-*
