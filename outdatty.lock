@@ -27,8 +27,8 @@ groups:
       src/nix_index_tests.rs: 65dd85ef8c269d6be677d7b4e225ba0e0ef868ce486a8e718853bd74abed15da
       src/nix_tests.rs: 31904d3cd654b26b75bd3687a495cd60955f25f64f8c846a1c084b94843ae624
       src/progress.rs: 3b36c35681834df5bc80c149211ff88691c4d52c7beaf1a776b79bb290e4f3c8
-      src/reason.rs: 6b47f6c5324da306a92b5df93f7ee9202911ff1b1656c7052b5fb1a0d5f4fce5
-      src/reason_tests.rs: d6454479b074289faef0f24611b288eef9734ea47d4c077ed51cc5bcb5c57d53
+      src/reason.rs: 51f9b77342d5c6fc2e65088d40a8b6f02a79549b84c558b368d67174f184859e
+      src/reason_tests.rs: b540beeab39a06f33756c98f76a70afae814805ca158ea3a3bdcee1d54c66aca
       src/renamed.nix: 70a368df8a9515fdab6e2d19e2fab9db530857960be1a20ccfeef10b0db3298f
       src/renamed.rs: e334d9025d1947c0822b48ce6f42169e2f22256fb456ca5479a7513625b215a3
       src/report.rs: 9393e7a28fe9ef1be88bc92529808db9d09ce30734c8ae2b793b810d81e76594
@@ -37,14 +37,14 @@ groups:
       src/requester_tests.rs: 24e70996f574abcb71fd63b572ab75729423a4283894c41a23e88acc67cd8502
       src/roots.rs: 68c87cf96f4d206f1f8ba2e7437c095ee5284ddb5ab68f26afa6da503a535619
       src/roots_tests.rs: a69e2d14624303019dccb1946d8c2ba4a776c8c22e50cee0e501a50bacca0de9
-      src/style.rs: 502ef0534ccb2c886ad7cae2a74537d3be83e2f193538d6471ac88573ba686c3
+      src/style.rs: 514bc0c063c47ab73a69eda1f255f1409cb26c5ee3b30e146a480d4e05ec3687
       src/style_tests.rs: 0315e89f51baed302d3946787d1c33336c2c18263df643fe2a79c1020ae12200
       src/terminal.rs: e1b359e4896e7af838056776e40226856bba34ec486f3df3735cbcce6d1178d3
       src/walk.rs: 0750933afbec635cbd24d99df0abf3c2694c400384be2aca220bb15cdad521ce
       src/walk_tests.rs: b363cd27130966218b3a0cdc6b7345acb0bdd83d116dae414a704645ec0e9d45
     dependents:
-      README.md: b22c5c0dc8f4c2a998c279c2bbef4a8ff3c53fb292affb00dffe96b6c4b97cd4
-      docs/architecture.md: 602cd7099541a512bc678a1c9838c91e999be2e1246dd9f98f7d4e81e357bdfa
+      README.md: d397580fe3bda949994139e56915c96e9fe86a8f98954500a697c5b4c1fdb3d4
+      docs/architecture.md: 827e9fdf5ff394f00f2023eea14d5111cd53a7c84b41cc3d94a30afac86241c2
   dev-docs:
     source:
       .config/nextest.toml: 367ed9a814800c344a521d1f326dca5072195b9c2c3afd620257b4136e2abb3e
@@ -66,4 +66,4 @@ groups:
     source:
       Cargo.toml: be89584ca72cbf035cfe5153cbb4bef66a8e6b6795344495b17bea4681969847
     dependents:
-      CHANGELOG.md: 6660ef8a4e8318a1751637e0ea57ed9aac9891da87b52130489fa436f3455f31
+      CHANGELOG.md: 66df0fad0f643fb0b7f4ba517b30f2347d6da21af8f5cb2afe1a1d6287c2be5a

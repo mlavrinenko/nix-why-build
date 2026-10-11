@@ -23,6 +23,9 @@ pub enum Reason {
         /// Where it downloads from.
         urls: Vec<String>,
     },
+    /// A crate of a `cargoLock.lockFile` package, or its fetch: each crate
+    /// gets a derivation of its own that no cache serves.
+    Vendored,
     /// It differs from what nixpkgs builds under the same attribute.
     Overridden {
         /// The counterpart, like `unstable#pkgsCuda.llama-cpp`.
@@ -70,6 +73,7 @@ impl Reason {
         match self {
             Self::LocalOnly => "local-only",
             Self::Fetch { .. } => "fetch",
+            Self::Vendored => "vendored",
             Self::Overridden { .. } => "overridden",
             Self::Unfree { .. } => "unfree",
             Self::NotBuiltByHydra { .. } => "not-built-by-hydra",
@@ -90,6 +94,9 @@ impl Reason {
                 || "no cache has the source".to_owned(),
                 |url| format!("no cache has {url}"),
             ),
+            Self::Vendored => "cargoLock.lockFile builds each crate in its own derivation; \
+                 cargoHash fetches them all in one"
+                .to_owned(),
             Self::Overridden {
                 against,
                 against_cached,
@@ -199,6 +206,9 @@ pub fn classify(store_dir: &Path, root: &Drv, lookup: Lookup<'_>, facts: &Facts)
     if root.local_only {
         return Reason::LocalOnly;
     }
+    if is_cargo_lock_crate(root) {
+        return Reason::Vendored;
+    }
     if root.fixed_output {
         return Reason::Fetch {
             urls: read_attrs(store_dir, &root.path)
@@ -223,6 +233,16 @@ pub fn classify(store_dir: &Path, root: &Drv, lookup: Lookup<'_>, facts: &Facts)
         return identical(root, same, facts);
     }
     overridden(store_dir, root, candidates, facts)
+}
+
+/// `importCargoLock` fetches each crate as `crate-<name>-<version>.tar.gz`
+/// and unpacks it in a derivation of its own: either one is a crate.
+fn is_cargo_lock_crate(root: &Drv) -> bool {
+    let is_tarball = |name: &str| {
+        let name = name.strip_suffix(".drv").unwrap_or(name);
+        name.starts_with("crate-") && name.ends_with(".tar.gz")
+    };
+    is_tarball(&root.name) || root.inputs.keys().any(|input| is_tarball(input.name()))
 }
 
 fn unknown(because: &str) -> Reason {

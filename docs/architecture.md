@@ -16,8 +16,9 @@ yesterday doesn't change the answer.
    config's options, evaluated during the walk, names the options and module
    files above each root.
 5. **Why** (`lookup.rs`, `counterparts.rs`, `counterparts.nix`, `reason.rs`,
-   `diff.rs`). Each root is diffed with the same attribute in every nixpkgs
-   input of the flake. No evidence, no category. A pname no guessed attribute
+   `diff.rs`). Fetches, local-only builds and `cargoLock` crates are told
+   from the `.drv` alone; every other root is diffed with the same attribute
+   in every nixpkgs input of the flake. No evidence, no category. A pname no guessed attribute
    finds goes through `renamed.rs` and `renamed.nix`, an index of each input
    by pname, built on that miss only and cached per input revision.
 6. **Print** (`report.rs`, `human.rs`, `style.rs`). Text for you, `--json`

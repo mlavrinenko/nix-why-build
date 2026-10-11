@@ -212,6 +212,19 @@
           ]
         },
         {
+          "description": "A crate of a `cargoLock.lockFile` package, or its fetch: each crate\ngets a derivation of its own that no cache serves.",
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "const": "vendored"
+            }
+          },
+          "required": [
+            "category"
+          ]
+        },
+        {
           "description": "It differs from what nixpkgs builds under the same attribute.",
           "type": "object",
           "properties": {

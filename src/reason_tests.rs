@@ -100,6 +100,28 @@ fn a_local_only_root_is_local_only_before_anything_else() {
 }
 
 #[test]
+fn a_cargo_lock_crate_and_its_fetch_are_vendored_while_other_fetches_stay_fetches() {
+    let store = FakeStore::new();
+    let tarball = spec("crate-arraydeque-0.5.1.tar.gz").fixed().env(
+        "url",
+        "https://static.crates.io/crates/arraydeque/0.5.1/download",
+    );
+    let fetch = drv(&store, &tarball);
+    let unpack = drv(
+        &store,
+        &spec("arraydeque-0.5.1").input(&store.add(&tarball), &["out"]),
+    );
+    let other = drv(&store, &spec("src.tar.gz").fixed());
+    let glue = drv(&store, &spec("policies.json"));
+    let facts = Facts::default();
+    let category = |root: &Drv| classify(store.dir(), root, found(&[], &[]), &facts).category();
+    assert_eq!(category(&fetch), "vendored");
+    assert_eq!(category(&unpack), "vendored");
+    assert_eq!(category(&other), "fetch");
+    assert_eq!(category(&glue), "unknown");
+}
+
+#[test]
 fn no_candidate_at_all_is_no_counterpart_and_lists_what_was_tried() {
     let store = FakeStore::new();
     let root = drv(&store, &llama());
@@ -366,6 +388,11 @@ fn other_details_read_as_one_line_of_evidence() {
             },
             "no-counterpart",
             "no nixpkgs attribute matches its pname (tried a#k, b#k, a#K +1)",
+        ),
+        (
+            Reason::Vendored,
+            "vendored",
+            "cargoLock.lockFile builds each crate in its own derivation; cargoHash fetches them all in one",
         ),
         (
             Reason::LocalOnly,

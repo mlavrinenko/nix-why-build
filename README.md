@@ -42,6 +42,7 @@ flake.
 | --- | --- |
 | `local-only` | `allowSubstitutes = false`, so nix builds it even if a cache has it |
 | `fetch` | a download no cache has, so the build fetches it |
+| `vendored` | a crate of a `cargoLock.lockFile` package, or its fetch; `cargoHash` fetches them all in one |
 | `overridden` | differs from the nixpkgs one, and the diff names what changed |
 | `unfree` | same as in nixpkgs, but Hydra skips unfree packages |
 | `not-built-by-hydra` | same as in nixpkgs, but `meta.broken` or `meta.hydraPlatforms` keeps Hydra off it |

@@ -57,7 +57,9 @@ fn category_style(reason: &Reason) -> Style {
         Reason::NotBuiltByHydra { .. } => Style::new().fg_color(Some(AnsiColor::Blue.into())),
         Reason::NewerThanCache { .. } => Style::new().fg_color(Some(AnsiColor::Green.into())),
         Reason::NoCounterpart { .. } => Style::new().fg_color(Some(AnsiColor::Cyan.into())),
-        Reason::Fetch { .. } | Reason::LocalOnly => Style::new().effects(Effects::DIMMED),
+        Reason::Fetch { .. } | Reason::Vendored | Reason::LocalOnly => {
+            Style::new().effects(Effects::DIMMED)
+        }
     }
 }
 

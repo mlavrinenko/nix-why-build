@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `nixpkgs#cacert`, still finds its counterpart. Only a miss indexes the
   input by pname, once per nixpkgs revision, cached under
   `$XDG_CACHE_HOME/nix-why-build`.
+- A `cargoLock.lockFile` package's crates and their fetches say `vendored`
+  and share one entry, instead of hundreds of `unknown` and `fetch` roots.
+  The fix is `cargoHash`, which fetches them all in one.
 - Any installable `nix build` takes works, and so does a `.drv` path. NixOS,
   home-manager and nix-darwin configurations resolve to what they build,
   quoted dotted names included.
