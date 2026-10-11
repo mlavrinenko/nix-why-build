@@ -7,11 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- Each GitHub release carries a `THIRD-PARTY-LICENSES.md` with the license text
-  of every crate built into the binaries.
-
 ## [0.1.0] - 2026-10-11
 
 ### Added
@@ -70,6 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Linux release binaries are static, so they run on NixOS. The flake ships
   `overlays.default`, and `nix build .#static` reproduces the release binary.
 - Every dependency is under a permissive license, so the crate stays MIT.
+- Each GitHub release carries a `THIRD-PARTY-LICENSES.md` with the license text
+  of every crate built into the binaries.
 
 [Unreleased]: https://github.com/mlavrinenko/nix-why-build/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/mlavrinenko/nix-why-build/releases/tag/v0.1.0
