@@ -9,8 +9,8 @@ rust-version = "1.95"
 description = "Explain why a Nix build compiles what no binary cache serves"
 license = "MIT"
 repository = "https://github.com/mlavrinenko/nix-why-build"
-keywords = []
-categories = ["command-line-utilities"]
+keywords = ["nix", "nixos", "binary-cache", "substituter"]
+categories = ["command-line-utilities", "development-tools::build-utils"]
 include = ["/src/", "/LICENSE*", "/README.md", "/CHANGELOG.md"]
 
 [lib]
