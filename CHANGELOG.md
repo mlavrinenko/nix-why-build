@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Release builds use thin LTO, so they build in parallel; the binary grows
+  by about 1 MB.
+
 ## [0.1.1] - 2026-10-11
 
 ### Changed

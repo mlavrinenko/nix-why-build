@@ -47,8 +47,10 @@ schemars = "1"
 
 [profile.release]
 strip = true
-lto = true
-codegen-units = 1
+# Thin LTO over the default 16 codegen units: the final stage runs in
+# parallel (19 s instead of 69 s to rebuild the crate) for a binary 15% bigger
+# and no slower.
+lto = "thin"
 panic = "abort"
 
 [lints]
