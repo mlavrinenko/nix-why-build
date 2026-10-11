@@ -7,3 +7,7 @@ updates:
     commit-message:
       prefix: "ci"
       include: "scope"
+    # One PR a month for every action that moved, not one PR per action.
+    groups:
+      actions:
+        patterns: ["*"]
