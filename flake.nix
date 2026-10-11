@@ -101,6 +101,10 @@
             # workflows in `just check`; nixfmt is also the flake's `formatter`.
             nixfmt
             actionlint
+            # `just renovate` lists outdated actions, crates and flake inputs
+            # with Renovate, in a no-push dry run. A dev aid like cargo-outdated,
+            # never a gate.
+            renovate
             nixd
             rust-analyzer
           ]);

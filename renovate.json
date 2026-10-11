@@ -1,0 +1,16 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "enabledManagers": ["github-actions", "cargo", "custom.jsonata"],
+  "dependencyDashboard": false,
+  "customManagers": [
+    {
+      "customType": "jsonata",
+      "fileFormat": "json",
+      "managerFilePatterns": ["/(^|/)flake\\.lock$/"],
+      "matchStrings": [
+        "$each(nodes.root.inputs, function($n) { { 'depName': $lookup($$.nodes, $n).locked.owner & '/' & $lookup($$.nodes, $n).locked.repo, 'packageName': 'https://github.com/' & $lookup($$.nodes, $n).locked.owner & '/' & $lookup($$.nodes, $n).locked.repo, 'currentValue': $lookup($$.nodes, $n).original.ref, 'currentDigest': $lookup($$.nodes, $n).locked.rev } })"
+      ],
+      "datasourceTemplate": "git-refs"
+    }
+  ]
+}

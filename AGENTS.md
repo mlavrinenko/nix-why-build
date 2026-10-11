@@ -42,6 +42,8 @@
   allow-list deliberately; never to silence a finding. `just outdated`
   (cargo-outdated) is network-bound too and reports newer upstream releases;
   it is a dev aid, never a gate.
+- `just renovate` lists outdated actions, crates and flake inputs via Renovate (no
+  push); network-bound, a dev aid, never a gate. See CONTRIBUTING.md.
 - `just test` gates the suite on cargo-nextest — a green run prints only the
   summary line, a red one prints each failure's full output — plus a
   `cargo test --doc` pass, because nextest does not run

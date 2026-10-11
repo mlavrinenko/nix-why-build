@@ -49,6 +49,7 @@ groups:
     source:
       - flake.nix
       - Justfile
+      - renovate.json
       - scripts/**
       - .config/nextest.toml
       - .config/wt.toml

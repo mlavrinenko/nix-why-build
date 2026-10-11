@@ -27,7 +27,7 @@
     ),
   ),
   assignee: "agent",
-  status: proposed(2026, 10, 11),
+  status: done(2026, 10, 11),
 )
 
 == Problem
@@ -46,7 +46,7 @@
 == Changes
 
 - `flake.nix`: `renovate` in the dev shell.
-- `renovate.json`: the managers to scan, nix included.
+- `renovate.json`: the managers to scan; flake.lock goes through a JSONata custom manager, as the `nix` manager does not read it.
 - `Justfile` and `scripts/renovate.sh`: run Renovate in local dry-run mode and reduce its JSON log to the list.
 - `CONTRIBUTING.md`: when to run it.
 

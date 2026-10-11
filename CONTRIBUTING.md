@@ -26,14 +26,14 @@ just fork <slug> --base=@  # the same, from the current commit, not main
 just land                  # in the worktree: gate, wip check, fast-forward, remove
 ```
 
-A worktree only gets commits, never your working tree, so commit first. Do not
-`git stash` in one: all worktrees share a single stash list.
+A worktree gets commits only, so commit first. Never `git stash` in one: all
+worktrees share a single stash list.
 
 [.config/wt.toml](.config/wt.toml) holds the hooks, so a clone with nix and
-direnv needs no worktrunk config of its own. Before the fast-forward they run
-`just check` and `mt check --commits main..HEAD`, which refuses a branch that
-names a task still `wip`. After it they carry the gate records (`mmz --import`)
-and a fresh coverage lcov to the primary checkout.
+direnv needs no worktrunk config. Before the fast-forward they run `just check`
+and `mt check --commits main..HEAD`, which refuses a branch naming a task still
+`wip`. After it they carry the gate records (`mmz --import`) and a fresh
+coverage lcov to the primary checkout.
 
 ## Code Style
 
@@ -120,18 +120,17 @@ live in [.mmz/config.yaml](.mmz/config.yaml).
   against this worktree, running nothing. A tag that matches no rule passes
   vacuously, so a new arm must carry it. `just cover` and `just crap` are
   untagged; `just coverage` carries them.
-- There is no `--force`. Touch an input or delete the record under
-  `.mmz/cache/` to re-run a fresh rule.
+- No `--force`: touch an input or delete the record under `.mmz/cache/`.
 - `just status` prints each rule's freshness.
 - A brand-new clone has no `Cargo.lock` until the first `just check` writes
-  it, so the second run misses once more. That's not a broken cache.
+  it, so the second run misses once more: not a broken cache.
 
 ## Rustdoc, Nix and Workflows
 
 `just doc` builds rustdoc with `-D warnings`, so a broken intra-doc link fails
-before docs.rs renders it. `just nix-fmt` checks every tracked `.nix` file and
-`just fmt` rewrites them. `just actionlint` lints `.github/workflows`,
-including the shell in each `run:` step.
+before docs.rs renders it. `just nix-fmt` checks every tracked `.nix` file
+(`just fmt` rewrites them); `just actionlint` lints `.github/workflows`, shell
+steps included.
 
 CI's check job also runs `nix flake check`, which builds the package
 `nix run` installs, so a `Cargo.lock` the Nix vendoring rejects fails there.
@@ -139,17 +138,20 @@ CI's check job also runs `nix flake check`, which builds the package
 ## Copy-Paste Gate
 
 `just check-dry` runs [jscpd](https://github.com/kucherenko/jscpd) over `src/`
-and `tests/` and fails on any duplicated Rust block of 70+ tokens. Fix it by
-extracting a shared helper, never by shuffling tokens until the detector
-loses the scent.
+and `tests/` and fails on any duplicated Rust block of 70+ tokens. Extract a
+shared helper; never shuffle tokens to fool the detector.
 
 ## Dependency Audits
 
-`just deny` runs `cargo-deny` (advisories, licenses, bans). It needs network,
-so it runs in its own CI job, not in `just check`. The policy is
+`just deny` runs `cargo-deny` (advisories, licenses, bans) in its own CI job,
+not in `just check`, since it needs network. The policy is
 [deny.toml](deny.toml): add a license to `licenses.allow` deliberately, never
-to silence a finding. `just outdated` lists newer dependency versions, also
+to silence a finding. `just outdated` lists newer crate versions, also
 network-bound and never a gate.
+
+`just renovate` is the wider view: a no-push [Renovate](https://docs.renovatebot.com)
+dry run, one line per update for actions, crates and `flake.lock` inputs.
+[renovate.json](renovate.json) reads `flake.lock` via JSONata, as `nix` does not.
 
 ## License Notices
 
@@ -170,9 +172,9 @@ on it.
 ## Mutation Testing
 
 `cargo-mutants` injects bugs and checks that the tests catch them.
-`just mutants-diff` sweeps what this branch changed against `main`, the daily
-driver. `just mutants` sweeps every file, slow and never a gate. A surviving
-`MISSED` mutant is a line covered but pinned by no assertion.
+`just mutants-diff` sweeps what this branch changed against `main`; `just
+mutants` sweeps every file, slow and never a gate. A surviving `MISSED` mutant
+is a line covered but pinned by no assertion.
 
 ## Git Hooks
 

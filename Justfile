@@ -191,6 +191,11 @@ licenses:
 outdated:
     cargo outdated --workspace
 
+[doc("List outdated actions, crates and flake inputs with Renovate (needs network)")]
+[group("extra")]
+renovate:
+    scripts/renovate.sh
+
 [doc("Mutation-test what this branch changed")]
 [group("extra")]
 mutants-diff *ARGS:
