@@ -1,0 +1,23 @@
+# Third-party licenses
+
+The nix-why-build binaries are built from the crates below. Each license is
+listed once, with the crates that use it and the text they ship under.
+
+{{#each overview}}
+- {{{name}}}: {{count}} crates
+{{/each}}
+
+{{#each licenses}}
+## {{{name}}} (`{{id}}`)
+
+Used by:
+
+{{#each used_by}}
+- {{crate.name}} {{crate.version}}{{#if crate.repository}} ({{crate.repository}}){{/if}}
+{{/each}}
+
+```text
+{{{text}}}
+```
+
+{{/each}}

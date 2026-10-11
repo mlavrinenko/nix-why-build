@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Each GitHub release carries a `THIRD-PARTY-LICENSES.md` with the license text
+  of every crate built into the binaries.
+
 ## [0.1.0] - 2026-10-11
 
 ### Added

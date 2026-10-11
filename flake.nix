@@ -79,6 +79,9 @@
             cargo-machete
             cargo-mutants
             cargo-deny
+            # `just licenses` renders THIRD-PARTY-LICENSES.md from Cargo.lock;
+            # the release workflow attaches it to the GitHub release.
+            cargo-about
             # cargo-nextest is the test runner `just test` gates on — doctests
             # run in a separate `cargo test --doc` pass, which is why `just
             # test` spells out both. cargo-outdated is a dev aid, deliberately

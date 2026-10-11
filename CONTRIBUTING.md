@@ -151,6 +151,17 @@ so it runs in its own CI job, not in `just check`. The policy is
 to silence a finding. `just outdated` lists newer dependency versions, also
 network-bound and never a gate.
 
+## License Notices
+
+MIT and Apache-2.0 ask that a copy carry their notices, so every GitHub release
+ships a `THIRD-PARTY-LICENSES.md` beside the binaries. `just licenses` writes it
+to `target/` with [cargo-about](https://github.com/EmbarkStudios/cargo-about),
+from [about.toml](about.toml) and the [about.hbs](about.hbs) template, covering
+the crates built into the binaries and no dev-dependency. `accepted` in
+`about.toml` mirrors `licenses.allow` in `deny.toml`; widen them together. A
+crate under any other license fails the run, and the release workflow runs it
+in its `check` job, so that failure lands before `cargo publish`.
+
 ## MSRV
 
 `rust-version` in `Cargo.toml` is the minimum supported Rust. A CI job builds

@@ -177,6 +177,12 @@ release VERSION *FLAGS:
 deny:
     scripts/quiet.sh cargo deny check --hide-inclusion-graph advisories licenses bans
 
+[doc("Write the dependencies' license notices to target/THIRD-PARTY-LICENSES.md")]
+[group("extra")]
+licenses:
+    mkdir -p target
+    cargo about generate --locked --fail about.hbs --output-file target/THIRD-PARTY-LICENSES.md
+
 [doc("List newer dependency versions (needs network)")]
 [group("extra")]
 outdated:

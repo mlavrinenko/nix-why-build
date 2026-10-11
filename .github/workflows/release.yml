@@ -90,6 +90,17 @@ jobs:
       - name: Check
         run: nix develop --command just check
 
+      # Runs here, before `publish`: a crate whose license cargo-about cannot
+      # resolve fails the run before anything reaches crates.io. The `release`
+      # job attaches the file beside the binaries.
+      - name: Collect the dependencies' license notices
+        run: nix develop --command just licenses
+
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: third-party-licenses
+          path: target/THIRD-PARTY-LICENSES.md
+
   build:
     name: Build (${{ matrix.target }})
     needs: [check, meta]
@@ -202,7 +213,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: [meta, build, publish]
+    needs: [meta, check, build, publish]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.3
@@ -234,4 +245,6 @@ jobs:
           body_path: ${{ runner.temp }}/notes.md
           generate_release_notes: true
           fail_on_unmatched_files: true
-          files: ${{ needs.meta.outputs.binary }}-*
+          files: |
+            ${{ needs.meta.outputs.binary }}-*
+            THIRD-PARTY-LICENSES.md

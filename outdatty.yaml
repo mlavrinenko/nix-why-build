@@ -56,3 +56,11 @@ groups:
     dependents:
       - CONTRIBUTING.md
       - AGENTS.md
+
+  # about.toml's `accepted` list mirrors deny.toml's `licenses.allow`: a license
+  # allowed in one and not the other either fails the audit or the release.
+  - name: license-policy
+    source:
+      - deny.toml
+    dependents:
+      - about.toml
