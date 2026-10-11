@@ -1,5 +1,9 @@
-use crate::counterparts::{Candidate, Found, Input, Lookup, attr_guesses, call, find};
+use std::sync::{Arc, Mutex};
+
+use crate::counterparts::{Candidate, Found, Input, Lookup, call, find};
 use crate::modules::Labels;
+use crate::renamed::find_renamed;
+use crate::{Options, Progress};
 
 use super::{fixture, scratch_store, strings};
 
@@ -11,10 +15,7 @@ fn input(label: &str, dir: &str) -> Input {
 }
 
 fn lookup(pname: &str, variants: &[&str]) -> Lookup {
-    Lookup {
-        attrs: attr_guesses(pname),
-        variants: strings(variants),
-    }
+    Lookup::new(pname, strings(variants))
 }
 
 async fn find_in(system: &str, inputs: &[Input], lookups: &[Lookup]) -> Found {
@@ -286,4 +287,99 @@ async fn five_thousand_lookups_evaluate_like_five() {
         Some(&strings(&["nixpkgs#python3Packages.flask-cors"]))
     );
     assert!(labelled.iter().skip(1).take(4_998).all(Vec::is_empty));
+}
+
+/// Looks `lookups` up in `inputs`, then the misses again under the index
+/// cached in `cache`: each lookup's labels, the warnings and the progress
+/// heard.
+async fn renamed_in(
+    inputs: &[Input],
+    lookups: &[Lookup],
+    cache: &std::path::Path,
+) -> (Vec<Vec<String>>, Vec<String>, Vec<Progress>) {
+    let mut found = find_in("x86_64-linux", inputs, lookups).await;
+    let heard = Arc::new(Mutex::new(Vec::new()));
+    let sink = Arc::clone(&heard);
+    let options = Options::new("unused")
+        .with_cache_dir(cache)
+        .with_progress(move |progress| sink.lock().expect("unpoisoned").push(progress));
+    let warnings = find_renamed("x86_64-linux", inputs, lookups, &mut found, &options).await;
+    let labelled = found.roots.iter().map(|found| labels(found)).collect();
+    let heard = heard.lock().expect("unpoisoned").clone();
+    (labelled, warnings, heard)
+}
+
+#[tokio::test]
+async fn a_pname_no_guess_finds_is_found_under_the_attribute_that_carries_it() {
+    let cache = tempfile::tempdir().expect("tempdir");
+    let inputs = [input("nixpkgs", "nixpkgs")];
+    let lookups = [
+        lookup("nss-cacert", &[""]),
+        lookup("no-such-package", &[""]),
+    ];
+    let (labelled, warnings, heard) = renamed_in(&inputs, &lookups, cache.path()).await;
+    assert_eq!(labelled, [strings(&["nixpkgs#cacert"]), vec![]]);
+    assert_eq!(warnings, Vec::<String>::new());
+    assert_eq!(
+        heard,
+        [Progress::IndexingAttributes {
+            input: "nixpkgs".to_owned()
+        }]
+    );
+    let index = std::fs::read_to_string(cache.path().join("attrs/nixpkgs-x86_64-linux.json"))
+        .expect("the index is cached");
+    assert!(index.contains(r#""nss-cacert":["cacert"]"#), "{index}");
+}
+
+#[tokio::test]
+async fn a_cached_index_is_read_back_instead_of_built() {
+    let cache = tempfile::tempdir().expect("tempdir");
+    let attrs = cache.path().join("attrs");
+    std::fs::create_dir_all(&attrs).expect("mkdir");
+    std::fs::write(
+        attrs.join("nixpkgs-x86_64-linux.json"),
+        r#"{"renamed-hello":["hello"]}"#,
+    )
+    .expect("seed the cache");
+    let inputs = [input("nixpkgs", "nixpkgs")];
+    let lookups = [lookup("renamed-hello", &[""])];
+    let (labelled, _, heard) = renamed_in(&inputs, &lookups, cache.path()).await;
+    assert_eq!(labelled, [strings(&["nixpkgs#hello"])]);
+    assert_eq!(heard, []);
+}
+
+#[tokio::test]
+async fn a_lookup_whose_guess_hits_builds_no_index() {
+    let cache = tempfile::tempdir().expect("tempdir");
+    let inputs = [input("nixpkgs", "nixpkgs")];
+    let (labelled, _, heard) = renamed_in(&inputs, &[lookup("hello", &[""])], cache.path()).await;
+    assert_eq!(labelled, [strings(&["nixpkgs#hello"])]);
+    assert_eq!(heard, []);
+    assert!(!cache.path().join("attrs").exists());
+}
+
+#[tokio::test]
+async fn an_index_that_fails_to_build_is_a_warning() {
+    scratch_store();
+    let cache = tempfile::tempdir().expect("tempdir");
+    let inputs = [Input {
+        label: "x".to_owned(),
+        path: "/does/not/exist".to_owned(),
+    }];
+    let mut found = Found {
+        hello: vec![],
+        roots: vec![vec![]],
+    };
+    let options = Options::new("unused").with_cache_dir(cache.path());
+    let lookups = [lookup("nss-cacert", &[""])];
+    let warnings = find_renamed("x86_64-linux", &inputs, &lookups, &mut found, &options).await;
+    let [warning] = warnings.as_slice() else {
+        panic!("one warning: {warnings:?}");
+    };
+    assert!(
+        warning.starts_with("x's attributes unindexed: "),
+        "{warning}"
+    );
+    assert!(!warning.contains('\n'), "{warning}");
+    assert_eq!(found.roots, [Vec::<Candidate>::new()]);
 }

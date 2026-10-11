@@ -38,6 +38,13 @@ pub enum Progress {
         /// fetches nor local-only.
         roots: usize,
     },
+    /// nix is indexing an input's attributes by `pname`, for roots whose
+    /// `pname` no attribute guess finds. Sent once per input and nixpkgs
+    /// revision: the index is cached.
+    IndexingAttributes {
+        /// The input's label, like `nixpkgs`.
+        input: String,
+    },
 }
 
 impl fmt::Display for Progress {
@@ -57,6 +64,9 @@ impl fmt::Display for Progress {
             Self::Indexing => out.write_str("indexing the configuration's options"),
             Self::Comparing { roots } => {
                 write!(out, "comparing {} with nixpkgs", counted(*roots, "root"))
+            }
+            Self::IndexingAttributes { input } => {
+                write!(out, "indexing {input}'s attributes by pname")
             }
         }
     }
@@ -114,6 +124,9 @@ mod tests {
             },
             Progress::Indexing,
             Progress::Comparing { roots: 52 },
+            Progress::IndexingAttributes {
+                input: "unstable".to_owned(),
+            },
         ]
         .iter()
         .map(ToString::to_string)
@@ -125,6 +138,7 @@ mod tests {
                 "asking 5 caches: level 7, 3210 derivations",
                 "indexing the configuration's options",
                 "comparing 52 roots with nixpkgs",
+                "indexing unstable's attributes by pname",
             ]
         );
     }

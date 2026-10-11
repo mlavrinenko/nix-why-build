@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `no-counterpart`. CUDA roots compare against `pkgsCuda`, 32-bit ones against
   `pkgsi686Linux`, and a mass rebuild with thousands of roots still gets its
   reasons.
+- A root whose attribute isn't its pname, like `nss-cacert` at
+  `nixpkgs#cacert`, still finds its counterpart. Only a miss indexes the
+  input by pname, once per nixpkgs revision, cached under
+  `$XDG_CACHE_HOME/nix-why-build`.
 - Any installable `nix build` takes works, and so does a `.drv` path. NixOS,
   home-manager and nix-darwin configurations resolve to what they build,
   quoted dotted names included.

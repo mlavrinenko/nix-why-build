@@ -19,11 +19,26 @@ pub struct Input {
 /// One root to look up.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Lookup {
+    /// The root's `pname`, which the attributes were guessed from.
+    #[serde(skip)]
+    pub pname: String,
     /// Attribute paths to try, in order.
     pub attrs: Vec<Vec<String>>,
     /// The package sets to look in: empty for the top level, or an attribute
     /// like `pkgsCuda` or `pkgsi686Linux`.
     pub variants: Vec<String>,
+}
+
+impl Lookup {
+    /// `pname` under its [`attr_guesses`], in `variants`.
+    #[must_use]
+    pub fn new(pname: &str, variants: Vec<String>) -> Self {
+        Self {
+            pname: pname.to_owned(),
+            attrs: attr_guesses(pname),
+            variants,
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -184,7 +199,7 @@ pub async fn find(system: &str, inputs: &[Input], roots: &[Lookup]) -> Result<Fo
 }
 
 /// `text` as a double-quoted Nix string.
-fn nix_string(text: &str) -> String {
+pub(crate) fn nix_string(text: &str) -> String {
     let escaped = text
         .replace('\\', "\\\\")
         .replace('"', "\\\"")

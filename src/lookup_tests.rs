@@ -83,6 +83,7 @@ fn tried_spells_every_attribute_in_every_input_and_set() {
         },
     ];
     let lookup = Lookup {
+        pname: "llama-cpp".to_owned(),
         attrs: vec![
             vec!["llama-cpp".to_owned()],
             vec!["python3Packages".to_owned(), "llama-cpp".to_owned()],
@@ -112,6 +113,7 @@ in
 {
   hello = mk "hello-2.12" { } { };
   app = mk "app-1.0" { pname = "app"; version = "1.0"; } { hydraPlatforms = [ localSystem ]; };
+  cacert = mk "nss-cacert-3.126" { pname = "nss-cacert"; version = "3.126"; } { hydraPlatforms = [ localSystem ]; };
 }
 "#;
 
@@ -134,6 +136,11 @@ async fn classify_app(hello_served: bool) -> super::Reason {
 
 /// The same, with the progress the comparison reported.
 async fn classified_app(hello_served: bool) -> (super::Reason, Vec<crate::Progress>) {
+    classified("app", hello_served).await
+}
+
+/// The same for the root nixpkgs builds at `attr`.
+async fn classified(attr: &str, hello_served: bool) -> (super::Reason, Vec<crate::Progress>) {
     let nixpkgs = tempfile::tempdir().expect("tempdir");
     std::fs::write(nixpkgs.path().join("default.nix"), FAKE_NIXPKGS).expect("write");
     std::fs::create_dir_all(nixpkgs.path().join("pkgs/top-level")).expect("mkdir");
@@ -142,7 +149,7 @@ async fn classified_app(hello_served: bool) -> (super::Reason, Vec<crate::Progre
         "{ }",
     )
     .expect("write");
-    let app = instantiate(nixpkgs.path(), "app").await;
+    let root = instantiate(nixpkgs.path(), attr).await;
     let hello = instantiate(nixpkgs.path(), "hello").await;
     let store = std::path::Path::new("/nix/store");
     let cache = tempfile::tempdir().expect("tempdir");
@@ -166,7 +173,7 @@ async fn classified_app(hello_served: bool) -> (super::Reason, Vec<crate::Progre
             .expect("substituters");
     let graph = crate::walk::walk(
         store,
-        &app,
+        &root,
         &crate::fixture_tests::FakeCache::default(),
         &|_| {},
     )
@@ -179,6 +186,7 @@ async fn classified_app(hello_served: bool) -> (super::Reason, Vec<crate::Progre
     let sink = std::sync::Arc::clone(&heard);
     let options = crate::Options::new("self")
         .with_store_dir(store)
+        .with_cache_dir(cache.path())
         .with_progress(move |progress| sink.lock().expect("lock").push(progress));
     let (reasons, warnings) = super::classify_roots(
         &options,
@@ -190,7 +198,7 @@ async fn classified_app(hello_served: bool) -> (super::Reason, Vec<crate::Progre
     .await;
     assert!(warnings.is_empty(), "{warnings:?}");
     let reason = reasons
-        .get(&app.to_absolute_path())
+        .get(&root.to_absolute_path())
         .cloned()
         .expect("the root is classified");
     let heard = heard.lock().expect("lock").clone();
@@ -219,4 +227,24 @@ async fn an_unchanged_root_whose_hello_is_cached_is_unknown() {
 async fn comparing_with_nixpkgs_says_how_many_roots_it_compares() {
     let (_, heard) = classified_app(false).await;
     assert_eq!(heard, [crate::Progress::Comparing { roots: 1 }]);
+}
+
+#[tokio::test]
+async fn a_root_whose_attribute_differs_from_its_pname_is_compared_with_it() {
+    let (reason, heard) = classified("cacert", false).await;
+    assert_eq!(
+        reason,
+        super::Reason::NewerThanCache {
+            against: "self#cacert".to_owned()
+        }
+    );
+    assert_eq!(
+        heard,
+        [
+            crate::Progress::Comparing { roots: 1 },
+            crate::Progress::IndexingAttributes {
+                input: "self".to_owned()
+            }
+        ]
+    );
 }

@@ -12,6 +12,7 @@ use crate::counterparts::{self, Found, Input};
 use crate::drv::{self, Drv};
 use crate::modules::Labels;
 use crate::reason::{self, Facts, Reason};
+use crate::renamed;
 use crate::roots::Split;
 use crate::walk::Graph;
 use crate::{Options, Progress};
@@ -58,10 +59,7 @@ pub async fn classify_roots(
     };
     let lookups: Vec<counterparts::Lookup> = keys
         .iter()
-        .map(|(pname, variants)| counterparts::Lookup {
-            attrs: counterparts::attr_guesses(pname),
-            variants: variants.clone(),
-        })
+        .map(|(pname, variants)| counterparts::Lookup::new(pname, variants.clone()))
         .collect();
     announce(
         options,
@@ -69,7 +67,10 @@ pub async fn classify_roots(
         system,
         !inputs.is_empty() && !lookups.is_empty(),
     );
-    let found = find(system, &inputs, &lookups, flake, &mut warnings).await;
+    let mut found = find(system, &inputs, &lookups, flake, &mut warnings).await;
+    if let Ok(found) = &mut found {
+        warnings.extend(renamed::find_renamed(system, &inputs, &lookups, found, options).await);
+    }
     let facts = match &found {
         Ok(found) => facts(store_dir, found, substituters).await,
         Err(_) => Facts::default(),

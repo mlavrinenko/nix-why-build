@@ -27,7 +27,11 @@
     ),
   ),
   assignee: "agent",
-  status: proposed(2026, 10, 11),
+  status: done(
+    2026,
+    10,
+    11,
+  )[nss-cacert compares as overridden against nixpkgs\#cacert],
 )
 
 == Problem

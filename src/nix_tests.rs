@@ -1,9 +1,9 @@
 //! The Nix expressions, run by the real `nix` against fixtures.
 //!
-//! `src/counterparts.nix` and `src/index.nix` are product code that
-//! `include_str!` embeds, and every other test fakes `nix` with a script, so
-//! a typo in either would pass. These call the real entry points
-//! (`counterparts::find`, `modules::load`) on `tests/fixtures/`: a fake nixpkgs
+//! `src/counterparts.nix`, `src/renamed.nix` and `src/index.nix` are product
+//! code that `include_str!` embeds, and every other test fakes `nix` with a
+//! script, so a typo in any would pass. These call the real entry points
+//! (`counterparts::find`, `renamed::find_renamed`, `modules::load`) on `tests/fixtures/`: a fake nixpkgs
 //! and a fake configuration written in Nix from `builtins` alone, so nothing
 //! touches the network. The tests sit in `nix_counterparts_tests.rs` and
 //! `nix_index_tests.rs`.

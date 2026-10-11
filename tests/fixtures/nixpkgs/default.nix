@@ -33,6 +33,8 @@ in
   llama-cpp = pkg "llama-cpp" "0.5.0" { };
   # Found under the camelCase guess (glibc-locales).
   glibcLocales = pkg "glibc-locales" "2.40" { };
+  # Found only by the index: no guess spells cacert from nss-cacert.
+  cacert = pkg "nss-cacert" "3.126" { };
   # Found in the language sets.
   python3Packages = {
     requests = pkg "requests" "2.32.0" { };

@@ -46,7 +46,7 @@ flake.
 | `unfree` | same as in nixpkgs, but Hydra skips unfree packages |
 | `not-built-by-hydra` | same as in nixpkgs, but `meta.broken` or `meta.hydraPlatforms` keeps Hydra off it |
 | `newer-than-cache` | same as in nixpkgs, but the cache is behind, even its `hello` is missing |
-| `no-counterpart` | no nixpkgs attribute matches its pname, and it lists what it tried |
+| `no-counterpart` | no nixpkgs attribute guessed from its pname, nor any with that pname, and it lists what it tried |
 | `unknown` | none of the above could be proven, and it says why |
 
 ## Possible targets

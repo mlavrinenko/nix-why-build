@@ -37,6 +37,7 @@ mod lookup;
 mod modules;
 mod progress;
 mod reason;
+mod renamed;
 mod report;
 mod requester;
 mod roots;
@@ -100,11 +101,15 @@ pub struct Options {
     pub trusted_keys: Option<Vec<String>>,
     /// Where `.drv` files live.
     pub store_dir: PathBuf,
+    /// Where what is computed once per nixpkgs revision is kept; `None`
+    /// keeps nothing.
+    pub cache_dir: Option<PathBuf>,
     progress: Option<Callback>,
 }
 
 impl Options {
-    /// Explains `installable` against nix's own configuration.
+    /// Explains `installable` against nix's own configuration, caching under
+    /// `$XDG_CACHE_HOME/nix-why-build`.
     #[must_use]
     pub fn new(installable: &str) -> Self {
         Self {
@@ -112,6 +117,10 @@ impl Options {
             substituters: None,
             trusted_keys: None,
             store_dir: PathBuf::from("/nix/store"),
+            cache_dir: renamed::cache_dir(
+                std::env::var_os("XDG_CACHE_HOME"),
+                std::env::var_os("HOME"),
+            ),
             progress: None,
         }
     }
@@ -134,6 +143,13 @@ impl Options {
     #[must_use]
     pub fn with_store_dir(mut self, dir: impl Into<PathBuf>) -> Self {
         self.store_dir = dir.into();
+        self
+    }
+
+    /// Caches under `dir` instead of `$XDG_CACHE_HOME/nix-why-build`.
+    #[must_use]
+    pub fn with_cache_dir(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.cache_dir = Some(dir.into());
         self
     }
 

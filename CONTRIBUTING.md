@@ -69,8 +69,8 @@ excluded from coverage, so anything there goes untested.
   `just cover` instruments the same runner. The output level lives in
   [.config/nextest.toml](.config/nextest.toml), because `cargo llvm-cov
   nextest` ignores `--status-level` on the command line.
-- `src/nix_tests.rs` evaluates `src/counterparts.nix` and `src/index.nix` with
-  the real `nix` on `tests/fixtures/`, offline. They write `.drv` files, so a
+- `src/nix_tests.rs` evaluates `src/counterparts.nix`, `src/renamed.nix` and
+  `src/index.nix` with the real `nix` on `tests/fixtures/`, offline. They write `.drv` files, so a
   nextest setup script (`tests/support/nix-scratch-store.sh`) hands them an
   in-memory store through `NIX_REMOTE`. They fail under plain `cargo test`.
 - Near the linecop limit, `just fix-check` ejects an inline `#[cfg(test)]`

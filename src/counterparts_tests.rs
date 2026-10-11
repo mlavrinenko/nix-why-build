@@ -59,9 +59,11 @@ fn a_candidate_labels_itself_by_input_variant_and_attribute() {
 /// `count` lookups, each of a distinct package, in two package sets.
 fn lookups(count: usize) -> Vec<Lookup> {
     (0..count)
-        .map(|at| Lookup {
-            attrs: attr_guesses(&format!("package-number-{at}")),
-            variants: vec![String::new(), "pkgsCuda".to_owned()],
+        .map(|at| {
+            Lookup::new(
+                &format!("package-number-{at}"),
+                vec![String::new(), "pkgsCuda".to_owned()],
+            )
         })
         .collect()
 }
